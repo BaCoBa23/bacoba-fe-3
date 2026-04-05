@@ -1,7 +1,7 @@
 import { Toaster } from "sonner";
 import "./App.css";
 import { ThemeProvider } from "./components/theme/theme-provider";
-import { Button } from "./components/ui/button";
+
 import AppHeader from "./pages/Common/AppHeader";
 import AppRoutes from "./router";
 

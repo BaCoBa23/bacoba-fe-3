@@ -1,21 +1,19 @@
-import React, { useState, useEffect, useContext, useRef } from "react";
+
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Card,
   CardContent,
   CardFooter,
-  CardHeader,
-  CardTitle,
+
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { FcGoogle } from "react-icons/fc";
-import { useNavigate, useLocation, Link } from "react-router-dom";
-import { toast } from "sonner";
-import Image from "@/assets/hero.png"; 
+import { useNavigate, Link } from "react-router-dom";
+
 import {
   Form,
   FormControl,
@@ -24,10 +22,10 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Loader2Icon } from "lucide-react";
+
 import { useForm } from "react-hook-form";
-import AppContext from "@/context/AppContext";
-import axios from "axios";
+
+
 
 export const LandingPage = () => {
   // const [loginLoading, setLoginLoading] = useState<Boolean>(false);
