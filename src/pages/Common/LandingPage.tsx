@@ -1,6 +1,9 @@
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import axios from "axios";
+import { useState } from "react";
+import { Loader2 } from "lucide-react";
 
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,8 +13,6 @@ import {
   CardFooter,
 
 } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { FcGoogle } from "react-icons/fc";
 import { useNavigate, Link } from "react-router-dom";
 
 import {
@@ -28,9 +29,7 @@ import { useForm } from "react-hook-form";
 
 
 export const LandingPage = () => {
-  // const [loginLoading, setLoginLoading] = useState<Boolean>(false);
-//   const { login, authAPI, loginLoading, setLoginLoading } =
-//     useContext(AppContext);
+  const [loginLoading, setLoginLoading] = useState<boolean>(false);
   const navigate = useNavigate();
 //   const hasRun = useRef(false);
 
@@ -39,8 +38,8 @@ export const LandingPage = () => {
 //   const redirectPath = searchParams.get("redirect") || "";
 
   const loginSchema = z.object({
-    email: z.string().trim().min(1, {
-      message: "Tên tài khoản hoặc email không được để trống",
+    username: z.string().trim().min(1, {
+      message: "Tên đăng nhập không được để trống",
     }),
     password: z.string().trim().min(1, {
       message: "Mật khẩu không được để trống",
@@ -49,10 +48,65 @@ export const LandingPage = () => {
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "",
+      username: "",
       password: "",
     },
   });
+
+  const onLogin = async ({ username, password }: z.infer<typeof loginSchema>) => {
+    setLoginLoading(true);
+    try {
+      const loginData = {
+        username: username,
+        password: password,
+      };
+      
+      console.log("Sending login data:", loginData);
+      
+      const response = await axios.post(
+        "/api/v1/users/login",
+        loginData,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        alert("Đăng nhập thành công!");
+        console.log("Login response:", response.data);
+        // Lưu token nếu có
+        if (response.data.accessToken) {
+          localStorage.setItem("accessToken", response.data.accessToken);
+        }
+        setLoginLoading(false);
+        navigate("/home");
+      }
+    } catch (error: any) {
+      setLoginLoading(false);
+      console.log("Full error response:", error.response);
+      console.log("Error data:", JSON.stringify(error.response?.data, null, 2));
+      console.log("Error status:", error.response?.status);
+      
+      let errorMessage = "Đăng nhập thất bại!";
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.data?.msg) {
+        errorMessage = error.response.data.msg;
+      } else if (error.response?.status === 400) {
+        errorMessage = "Tên đăng nhập hoặc mật khẩu không chính xác!";
+      } else if (error.request) {
+        errorMessage = "Không thể kết nối đến server. Vui lòng kiểm tra server có đang chạy không?";
+      }
+      
+      alert(errorMessage);
+      console.log("Login error:", error);
+    }
+  };
 
 //   useEffect(() => {
 //     // cho toast hien thi 1 lan duy nhat
@@ -173,61 +227,45 @@ export const LandingPage = () => {
 //     );
 //   }
   return (
-    <div className="w-full h-full flex justify-center">
-      {/* <div className="basis-1/2 flex items-center justify-center p-4">
-        <img
-          src={Image}
-          alt="Login illustration"
-          className="w-full h-full object-cover object-right"
-        />
-      </div> */}
-
-      <div className="basis-1/2 h-full">
-        <div className="flex flex-col flex-grow items-center">
-          {/* Title + SubTitle - Giới hạn width như Card */}
-          <div className="w-full  max-w-md text-center mt-5 flex flex-col justify-center items-center px-5 mt-35">
-            <h1 className="scroll-m-20 text-4xl font-bold tracking-tight text-balance ">
-              Đăng nhập
-            </h1>
-            <Button
-              variant="outline"
-              className="w-full flex items-center gap-2 cursor-pointer mt-6"
-            //   onClick={handleGoogleLogin}
-            //   disabled={loginLoading ? true : undefined}
-            >
-              <FcGoogle /> Đăng nhập bằng tài khoản Google
-            </Button>
-
-            <div className="w-full flex items-center my-3">
-              <Separator className="flex-1" />
-              <span className="mx-2 text-muted-foreground">Hoặc</span>
-              <Separator className="flex-1" />
-            </div>
-          </div>
-
+    <div 
+      className="w-full min-h-screen flex items-center justify-center relative"
+      style={{
+        backgroundImage: 'url(/quan-ly-kho.webp)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed'
+      }}
+    >
+      <div className="relative z-10 w-full">
+        <div className="flex flex-col items-center">
           {/* Card form */}
-          <div className="flex  justify-center w-full">
-            <Card className="w-full max-w-md bg-transparent border-0 shadow-none">
-              <CardContent className="">
+          <div className="flex  justify-center w-full px-5">
+            <Card className="w-full max-w-md bg-white border-0 shadow-lg rounded-lg">
+              <CardContent className="pt-6">
+                <div className="text-center mb-6">
+                  <h1 className="scroll-m-20 text-4xl font-bold tracking-tight text-balance text-gray-800">
+                    Đăng nhập
+                  </h1>
+                </div>
                 <Form 
                 {...form}
                 >
                   <form
-                    // onSubmit={form.handleSubmit(onLogin)}
+                    onSubmit={form.handleSubmit(onLogin)}
                     className="flex flex-col gap-2"
                   >
                     <FormField
                       control={form.control}
-                      name="email"
+                      name="username"
                       render={(
                         { field }
                     ) => (
                         <FormItem>
-                          <FormLabel>Email</FormLabel>
+                          <FormLabel>Tên Đăng Nhập</FormLabel>
                           <FormControl>
                             <Input
                               {...field}
-                              placeholder="Nhập email..."
+                              placeholder="Nhập tên đăng nhập..."
                               className="my-2"
                             />
                           </FormControl>
@@ -256,47 +294,22 @@ export const LandingPage = () => {
                         </FormItem>
                       )}
                     />
-                    <div className="w-full text-end mb-1">
-                      <span
-                        className="text-sm text-(--muted-foreground) hover:text-amber-500 cursor-pointer underline"
-                        onClick={() => {
-                          navigate("/forgot-password");
-                        }}
-                      >
-                        Quên mật khẩu?
-                      </span>
-                    </div>
-                    {/* {loginLoading ? (
+                    {loginLoading ? (
                       <Button type="submit" className="w-full" disabled>
-                        <Loader2Icon className="animate-spin" />
+                        <Loader2 className="animate-spin mr-2" />
                         Vui lòng chờ
                       </Button>
-                    ) : ( */}
+                    ) : (
                       <Button
                         type="submit"
                         className="w-full cursor-pointer"
-                        // disabled={loginLoading ? true : undefined}
                       >
                         Đăng nhập
                       </Button>
-                    {/* )} */}
+                    )}
                   </form>
                 </Form>
               </CardContent>
-              <CardFooter className="flex-col gap-2">
-                <div className="w-full flex items-center">
-                  <Separator className="flex-1" />
-                  <span className="text-(--muted-foreground)">
-                    Bạn chưa có tài khoản?
-                  </span>
-                  <Separator className="flex-1" />
-                </div>
-                  <Button variant="outline" asChild>
-                    <Link to="/" className="w-full my-5">
-                      Đăng ký
-                    </Link>
-                  </Button>
-              </CardFooter>
             </Card>
           </div>
         </div>
