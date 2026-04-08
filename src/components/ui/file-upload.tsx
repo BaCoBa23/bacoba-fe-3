@@ -404,6 +404,47 @@ function FileUploadRoot(props: FileUploadRootProps) {
     };
   }, [files, urlCache]);
 
+  const onFilesUpload = React.useCallback(
+    async (files: File[]) => {
+      try {
+        for (const file of files) {
+          store.dispatch({ type: "SET_PROGRESS", file, progress: 0 });
+        }
+
+        if (onUpload) {
+          await onUpload(files, {
+            onProgress,
+            onSuccess: (file) => {
+              store.dispatch({ type: "SET_SUCCESS", file });
+            },
+            onError: (file, error) => {
+              store.dispatch({
+                type: "SET_ERROR",
+                file,
+                error: error.message ?? "Upload failed",
+              });
+            },
+          });
+        } else {
+          for (const file of files) {
+            store.dispatch({ type: "SET_SUCCESS", file });
+          }
+        }
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Upload failed";
+        for (const file of files) {
+          store.dispatch({
+            type: "SET_ERROR",
+            file,
+            error: errorMessage,
+          });
+        }
+      }
+    },
+    [store, onUpload, onProgress],
+  );
+
   const onFilesChange = React.useCallback(
     (originalFiles: File[]) => {
       if (disabled) return;
@@ -533,48 +574,8 @@ function FileUploadRoot(props: FileUploadRootProps) {
       acceptTypes,
       maxSize,
       disabled,
+      onFilesUpload,
     ],
-  );
-
-  const onFilesUpload = React.useCallback(
-    async (files: File[]) => {
-      try {
-        for (const file of files) {
-          store.dispatch({ type: "SET_PROGRESS", file, progress: 0 });
-        }
-
-        if (onUpload) {
-          await onUpload(files, {
-            onProgress,
-            onSuccess: (file) => {
-              store.dispatch({ type: "SET_SUCCESS", file });
-            },
-            onError: (file, error) => {
-              store.dispatch({
-                type: "SET_ERROR",
-                file,
-                error: error.message ?? "Upload failed",
-              });
-            },
-          });
-        } else {
-          for (const file of files) {
-            store.dispatch({ type: "SET_SUCCESS", file });
-          }
-        }
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Upload failed";
-        for (const file of files) {
-          store.dispatch({
-            type: "SET_ERROR",
-            file,
-            error: errorMessage,
-          });
-        }
-      }
-    },
-    [store, onUpload, onProgress],
   );
 
   const onInputChange = React.useCallback(
@@ -734,19 +735,10 @@ function FileUploadDropzone(props: FileUploadDropzoneProps) {
       event.preventDefault();
       store.dispatch({ type: "SET_DRAG_OVER", dragOver: false });
 
-      const files = Array.from(event.dataTransfer.files);
-      const inputElement = context.inputRef.current;
-      if (!inputElement) return;
-
-      const dataTransfer = new DataTransfer();
-      for (const file of files) {
-        dataTransfer.items.add(file);
-      }
-
-      inputElement.files = dataTransfer.files;
-      inputElement.dispatchEvent(new Event("change", { bubbles: true }));
+      const files = Array.from(event.dataTransfer!.files);
+      store.dispatch({ type: "ADD_FILES", files });
     },
-    [store, context.inputRef, onDropProp],
+    [store, onDropProp],
   );
 
   const onPaste = React.useCallback(
@@ -774,18 +766,9 @@ function FileUploadDropzone(props: FileUploadDropzoneProps) {
 
       if (files.length === 0) return;
 
-      const inputElement = context.inputRef.current;
-      if (!inputElement) return;
-
-      const dataTransfer = new DataTransfer();
-      for (const file of files) {
-        dataTransfer.items.add(file);
-      }
-
-      inputElement.files = dataTransfer.files;
-      inputElement.dispatchEvent(new Event("change", { bubbles: true }));
+      store.dispatch({ type: "ADD_FILES", files });
     },
-    [store, context.inputRef, onPasteProp],
+    [store, onPasteProp],
   );
 
   const onKeyDown = React.useCallback(

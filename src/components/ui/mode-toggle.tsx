@@ -36,13 +36,14 @@ export function ModeToggle() {
     };
 
     // Nếu không có trigger hoặc không hỗ trợ API → áp dụng trực tiếp
-    if (!trigger || !(document as any).startViewTransition) {
+    const doc = document as any;
+    if (!trigger || !doc.startViewTransition) {
       applyTheme();
       return;
     }
 
     // Bắt đầu transition và đảm bảo cập nhật DOM trong callback
-    await (document as any).startViewTransition(() => {
+    await doc.startViewTransition?.(() => {
       applyTheme();
     }).ready;
 
