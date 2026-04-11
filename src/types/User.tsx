@@ -1,5 +1,11 @@
 export interface User {
   id: number;
   username: string;
-  status: "active" | "inactive" | "banned";
+  password: string;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
+
+export type CreateUserInput = Omit<User, "id" | "createdAt" | "updatedAt">;
+export type UpdateUserInput = Partial<Omit<User, "id" | "createdAt" | "updatedAt">>;
