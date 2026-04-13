@@ -99,7 +99,7 @@ export const LandingPage = () => {
                 <Form {...form}>
                   <form
                     onSubmit={form.handleSubmit(onLogin)}
-                    className="flex flex-col gap-2"
+                    className="space-y-4"
                   >
                     <FormField
                       control={form.control}
@@ -111,7 +111,6 @@ export const LandingPage = () => {
                             <Input
                               {...field}
                               placeholder="Nhập tên đăng nhập..."
-                              className="my-2"
                             />
                           </FormControl>
                           <FormMessage />
@@ -129,7 +128,6 @@ export const LandingPage = () => {
                               type="password"
                               {...field}
                               placeholder="Nhập mật khẩu..."
-                              className="mt-2"
                             />
                           </FormControl>
                           <FormMessage />
@@ -137,14 +135,14 @@ export const LandingPage = () => {
                       )}
                     />
                     {loginLoading ? (
-                      <Button type="submit" className="w-full" disabled>
+                      <Button type="submit" className="w-full mt-6" disabled>
                         <Loader2 className="animate-spin mr-2" />
                         Vui lòng chờ
                       </Button>
                     ) : (
                       <Button
                         type="submit"
-                        className="w-full cursor-pointer"
+                        className="w-full mt-6"
                       >
                         Đăng nhập
                       </Button>
