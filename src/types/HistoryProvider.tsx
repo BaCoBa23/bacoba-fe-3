@@ -2,8 +2,7 @@ import type { Provider } from "./Provider";
 
 
 export interface HistoryProvider {
-  id: number;
-  providerId: number;
+  id: string;
   provider?: Provider;
   paidAmount: number;
   description?: string | null;

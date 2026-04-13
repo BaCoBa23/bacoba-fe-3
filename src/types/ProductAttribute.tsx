@@ -4,10 +4,8 @@ import type { Product } from "./Product";
 
 export interface ProductAttribute {
   productId: string;
-  attributeId: number;
+  attributeId: string;
   content: string;
-  product?: Product;
-  attribute?: Attribute;
   createdAt: Date;
   updatedAt: Date;
 }
