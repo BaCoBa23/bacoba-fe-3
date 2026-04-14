@@ -1,168 +1,265 @@
-import React from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
-import { Button } from "../ui/button";
-import { Plus } from "lucide-react";
-import type { Product } from "@/types";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { zodResolver } from "@hookform/resolvers/zod";
-
 import { useForm } from "react-hook-form";
 import z from "zod";
-function AddNewProduct() {
+import { Button } from "../ui/button";
+import { Plus } from "lucide-react";
+import { Input } from "../ui/input";
+import { Separator } from "../ui/separator";
 
+function AddNewProduct() {
   const FormSchema = z.object({
-    title: z.string().min(5, "Tiêu đề không được để trống."),
-    pet: z.string().min(1, "Chọn thú nuôi."),
-    description: z.string().optional(),
+    id: z.string().optional(),
+    name: z.string().min(1, "Tên hàng là bắt buộc"),
+    productTypeId: z.string().min(1, "Vui lòng chọn nhóm hàng"),
+    brand: z.string().optional(),
+    initialPrice: z.coerce.number().min(0, "Giá vốn không được âm"),
+    salePrice: z.coerce.number().min(0, "Giá bán không được âm"),
   });
 
   type FormValues = z.infer<typeof FormSchema>;
-//   const form = useForm<FormValues>({
-//     resolver: zodResolver(FormSchema),
-//     defaultValues: {
-//         variants: "",
-//         productTypeId: "",
-//         type: "",
-//         brandId: "",
-//         initialPrice: 0,
-//         salePrice: 0,
-//         quantity: 0,
-//         description: "",
-//         productAttributes: "",
-//     },
-//   });
+  const form = useForm<FormValues>({
+    resolver: zodResolver(FormSchema),
+    defaultValues: {
+      name: "",
+      productTypeId: "",
+      brand: "",
+      initialPrice: 0,
+      salePrice: 0,
+    },
+  });
+
+  const onSubmit = (data: FormValues) => {
+    console.log("Dữ liệu gửi lên API:", data);
+    form.reset();
+  };
+
   return (
     <Dialog>
-            <DialogTrigger asChild>
-              <Button variant={"ghost"}>
-                <Plus /> Tạo mới
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="min-w-4/5 min-h-4/5">
-              {/* <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)}>
-                  <DialogHeader>
-                    <DialogTitle>Chỉnh sửa form nhận nuôi</DialogTitle>
-                    <DialogDescription>
-                      Tạo đơn nhận nuôi cho từng loài! Giảm bớt thời gian quản
-                      lý.
-                    </DialogDescription>
-                  </DialogHeader>
+      <DialogTrigger asChild>
+        <Button variant={"ghost"}>
+          <Plus /> Tạo mới
+        </Button>
+      </DialogTrigger>
 
-                  <div className="grid gap-4 my-3">
-                   
-                    <FormField
-                      control={form.control}
-                      name="title"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Tiêu đề</FormLabel>
+      {/* THAY ĐỔI 1: Thiết kế DialogContent với flexbox và chiều cao cố định (v.d 80vh)
+          Bỏ overflow-y-auto ở đây vì chúng ta muốn Header/Footer cố định.
+      */}
+      <DialogContent className="min-w-3xl max-w-3xl h-[80vh] flex flex-col p-0 gap-0">
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex flex-col h-full"
+          >
+            {/* THAY ĐỔI 2: Header bọc trong padding riêng */}
+            <div className="p-6 pb-2">
+              <DialogHeader>
+                <DialogTitle>Thêm hàng hóa mới</DialogTitle>
+                <DialogDescription>
+                  Nhập thông tin chi tiết cho hàng hóa mới. Các trường có dấu
+                  (*) là bắt buộc.
+                </DialogDescription>
+              </DialogHeader>
+            </div>
+
+            {/* THAY ĐỔI 3: Phần Content bọc trong div có flex-1 và overflow-y-auto 
+                Đây là phần duy nhất sẽ cuộn khi dữ liệu quá dài.
+            */}
+            <div className="flex-1 overflow-y-auto p-6 pt-2">
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                  <FormItem className="col-span-2">
+                    <FormLabel className="after:content-['*'] after:ml-0.5 after:text-red-500">
+                      Mã hàng
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="Tự động" disabled />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem className="col-span-2">
+                        <FormLabel className="after:content-['*'] after:ml-0.5 after:text-red-500">
+                          Tên hàng
+                        </FormLabel>
+                        <FormControl>
+                          <Input placeholder="Bắt buộc" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="productTypeId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nhóm hàng</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
                           <FormControl>
-                            <Input placeholder="Nhập tiêu đề" {...field} />
+                            <SelectTrigger>
+                              <SelectValue placeholder="Chọn nhóm hàng" />
+                            </SelectTrigger>
                           </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                          <SelectContent>
+                            <SelectItem value="group1">áo</SelectItem>
+                            <SelectItem value="group2">quần</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-               
-                    <FormField
-                      control={form.control}
-                      name="pet"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Thú nuôi</FormLabel>
+                  <FormField
+                    control={form.control}
+                    name="brand"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Thương hiệu</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
                           <FormControl>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value}
-                              defaultValue={field.value}
-                              disabled
-                            >
-                              <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Chọn thú nuôi">
-                                  {adoptionForm?.pet?.name}
-                                </SelectValue>
-                              </SelectTrigger>
-                              <SelectContent className="max-h-[10rem]">
-                                <SelectGroup>
-                                  <SelectLabel>Mã thú nuôi</SelectLabel>
-                                  {availablePets.map((s: any) => (
-                                    <SelectItem
-                                      key={s._id}
-                                      value={s._id}
-                                      className="flex items-center w-full mx-2 py-1"
-                                    >
-                                      <Avatar className="rounded-none w-8 h-8">
-                                        <AvatarImage
-                                          src={s?.photos[0]}
-                                          alt={s?.name}
-                                          className="w-8 h-8 object-center object-cover"
-                                        />
-                                        <AvatarFallback className="rounded-none">
-                                          <span className="font-medium">
-                                            {s.name.charAt(0).toUpperCase()}
-                                          </span>
-                                        </AvatarFallback>
-                                      </Avatar>
-
-                                      <div className="ml-2 flex flex-col overflow-hidden ">
-                                        <span className="text-sm font-medium truncate">
-                                          {s.name}
-                                        </span>
-                                        <span className="text-xs text-(--muted-foreground) truncate">
-                                          #{s.petCode}
-                                        </span>
-                                      </div>
-                                    </SelectItem>
-                                  ))}
-                                </SelectGroup>
-                              </SelectContent>
-                            </Select>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Chọn thương hiệu" />
+                            </SelectTrigger>
                           </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                          <SelectContent>
+                            <SelectItem value="brand1">A Hoa</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
-                
-                    <FormField
-                      control={form.control}
-                      name="description"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Mô tả</FormLabel>
-                          <FormControl>
-                            <MinimalTiptapEditor
-                              value={field.value || ""}
-                              onChange={field.onChange}
-                              className="w-full"
-                              editorContentClassName="p-5"
-                              output="html"
-                              placeholder="Enter your description..."
-                              autofocus={true}
-                              editable={true}
-                              hideToolbar={false}
-                              editorClassName="focus:outline-hidden"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                <Accordion
+                  defaultValue="prices"
+                  type="single"
+                  collapsible
+                  className="w-full border-t"
+                >
+                  <AccordionItem value="prices" className="border-none">
+                    <AccordionTrigger className="hover:no-underline cursor-pointer py-4 border-0">
+                      {/* Thêm div bọc để căn chỉnh text */}
+                      <div className="flex flex-col items-start text-left">
+                        <span className="text-md font-bold">
+                          Giá vốn, giá bán
+                        </span>
+                        <span className="text-xs text-muted-foreground font-normal">
+                          Thiết lập giá nhập kho và giá bán lẻ cho sản phẩm
+                        </span>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="grid grid-cols-2 gap-4 pt-2 pb-4">
+                        <FormField
+                          control={form.control}
+                          name="initialPrice"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Giá vốn</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  placeholder="0"
+                                  className="text-right"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="salePrice"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Giá bán</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  placeholder="0"
+                                  className="text-right"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </AccordionContent>
+                    <Separator />
+                  </AccordionItem>
+                </Accordion>
 
-                  <DialogFooter>
-                    <DialogClose asChild>
-                      <Button variant="outline">Hủy</Button>
-                    </DialogClose>
-                    <Button className="cursor-pointer" type="submit">
-                      Lưu
+                {/* Dummy content để test scroll nếu cần */}
+                {/* <div className="h-96 bg-slate-50 border-dashed border-2 flex items-center justify-center">Nội dung thêm</div> */}
+              </div>
+            </div>
+
+            {/* THAY ĐỔI 4: Footer luôn nằm ngoài phần scroll 
+                Thêm border-t và padding để tách biệt rõ ràng.
+            */}
+            <div className="p-6 border-t bg-background">
+              <DialogFooter className="flex items-center">
+                <div className="flex gap-2">
+                  <DialogClose asChild>
+                    <Button variant="outline" type="button">
+                      Hủy
                     </Button>
-                  </DialogFooter>
-                </form>
-              </Form> */}
-            </DialogContent>
-          </Dialog>
+                  </DialogClose>
+                  <Button type="submit">Tạo mới</Button>
+                </div>
+              </DialogFooter>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
