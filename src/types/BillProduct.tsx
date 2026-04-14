@@ -1,13 +1,10 @@
-import type { Bill } from "./Bill";
-import type { Product } from "./Product";
+
 
 
 export interface BillProduct {
-  id: number;
-  billId: number;
-  bill?: Bill;
+  id: string;
   productId: string;
-  product?: Product;
+  productName: string;
   quantity: number;
   salePrice: number;
   total: number;

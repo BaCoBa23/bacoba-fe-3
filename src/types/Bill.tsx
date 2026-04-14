@@ -2,10 +2,8 @@ import type { BillProduct } from "./BillProduct";
 
 
 export interface Bill {
-  id: number;
-  exchangeId?: number | null;
+  id: string;
   exchange?: Bill | null;
-  exchangedBy?: Bill[];
   name?: string | null;
   customerName?: string | null;
   phoneNumber?: string | null;

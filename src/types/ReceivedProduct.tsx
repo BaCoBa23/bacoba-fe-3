@@ -1,13 +1,10 @@
-import type { Product } from "./Product";
-import type { ReceivedNote } from "./ReceivedNote";
+
 
 
 export interface ReceivedProduct {
-  id: number;
-  receivedNoteId: number;
-  receivedNote?: ReceivedNote;
+  id: string;
   productId: string;
-  product?: Product;
+  productName: string;
   addQuantity: number;
   discount: number;
   description?: string | null;

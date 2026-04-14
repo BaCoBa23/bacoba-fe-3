@@ -3,8 +3,7 @@ import type { ReceivedProduct } from "./ReceivedProduct";
 
 
 export interface ReceivedNote {
-  id: number;
-  providerId: number;
+  id: string;
   provider?: Provider;
   phoneNumber?: string | null;
   discount: number;
