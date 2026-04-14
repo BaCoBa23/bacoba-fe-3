@@ -1,5 +1,4 @@
-import type { Product } from "./Product";
-import type { ReceivedNote } from "./ReceivedNote";
+
 
 
 export interface ReceivedProduct {

@@ -1,5 +1,4 @@
-import type { Bill } from "./Bill";
-import type { Product } from "./Product";
+
 
 
 export interface BillProduct {

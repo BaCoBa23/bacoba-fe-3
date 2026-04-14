@@ -1,4 +1,4 @@
-import type { Attribute } from "./Attribute";
+
 
 
 export interface AttributeType {

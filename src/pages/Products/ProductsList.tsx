@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/pagination";
 
 import {
-  ArrowBigRightDash,
   ArrowRight,
   ChevronDown,
   ChevronRight,

@@ -1,5 +1,4 @@
-import type { Attribute } from "./Attribute";
-import type { Product } from "./Product";
+
 
 
 export interface ProductAttribute {

@@ -1,6 +1,4 @@
-import type { Brand } from "./Brand";
-import type { ProductAttribute } from "./ProductAttribute";
-import type { ProductType } from "./ProductType";
+
 
 export interface Product {
   id: string;
