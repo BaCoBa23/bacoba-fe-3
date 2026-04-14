@@ -14,7 +14,16 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 
-import { ChevronDown, ChevronRight, Edit, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import {
+  ArrowBigRightDash,
+  ArrowRight,
+  ChevronDown,
+  ChevronRight,
+  Edit,
+  MoreHorizontal,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import {
   Table,
   TableBody,
@@ -25,7 +34,14 @@ import {
 } from "@/components/ui/table";
 import React, { useState } from "react";
 import { MOCK_PRODUCTS } from "@/types/Product";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 function ProductsList() {
   interface Option {
@@ -100,8 +116,9 @@ function ProductsList() {
         <div className="basis-1/2">
           <Input type="search" placeholder="Tìm theo mã, tên hàng hóa" />
         </div>
-        <div className="basis-1/3 justify-around">
+        <div className="basis-1/3 flex justify-around aglin-center ">
           <AddNewProduct />
+          <Button variant={"outline"}>Nhập hàng <ArrowRight/> </Button>
         </div>
       </div>
 
@@ -174,8 +191,8 @@ function ProductsList() {
               <TableHead className="w-[40px]"></TableHead>
               <TableHead className="w-[50px]">
                 <Checkbox
-                // Logic check all như cũ
-                disabled
+                  // Logic check all như cũ
+                  disabled
                 />
               </TableHead>
               <TableHead className="font-bold  ">Mã hàng</TableHead>
@@ -216,7 +233,9 @@ function ProductsList() {
                         }
                       />
                     </TableCell>
-                    <TableCell className=" text-sm font-medium">{product.id}</TableCell>
+                    <TableCell className=" text-sm font-medium">
+                      {product.id}
+                    </TableCell>
                     <TableCell className="min-w-[500px] max-w-[500px]  text-sm font-medium pt-3 line-clamp-5 whitespace-normal break-words">
                       {product.name}
                     </TableCell>
