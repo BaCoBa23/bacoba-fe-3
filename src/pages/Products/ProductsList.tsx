@@ -42,7 +42,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { getProducts, type ProductResponse, type GetProductsParams } from "@/services/api";
+import { getProducts, deleteProduct, type ProductResponse, type GetProductsParams } from "@/services/api";
 import { MOCK_PRODUCTS } from "@/types/Product";
 
 function ProductsList() {
@@ -154,6 +154,45 @@ function ProductsList() {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+  };
+
+  const handleDeleteProduct = async (productId: string) => {
+    if (!window.confirm(`Bạn chắc chắn muốn xóa sản phẩm ${productId}?`)) {
+      return;
+    }
+    try {
+      console.log("Deleting product:", productId);
+      const response = await deleteProduct(productId);
+      console.log("Delete success:", response);
+      // Reload danh sách sau khi xóa
+      setProducts(products.filter(p => p.id !== productId));
+      alert("Xóa sản phẩm thành công!");
+    } catch (err: any) {
+      console.error("Delete error full:", err);
+      const errorMsg = err?.response?.data?.message || err?.message || "Không biết lỗi gì";
+      alert(`Lỗi xóa sản phẩm: ${errorMsg}`);
+    }
+  };
+
+  const handleDeleteVariant = async (productId: string, variantId: string) => {
+    if (!window.confirm(`Bạn chắc chắn muốn xóa biến thể ${variantId}?`)) {
+      return;
+    }
+    try {
+      const updatedProducts = products.map(p => {
+        if (p.id === productId && p.variants) {
+          return {
+            ...p,
+            variants: p.variants.filter((v: any) => v.id !== variantId)
+          };
+        }
+        return p;
+      });
+      setProducts(updatedProducts);
+      alert("Xóa biến thể thành công!");
+    } catch (err: any) {
+      alert("Lỗi xóa biến thể: " + err.message);
+    }
   };
 
   return (
@@ -308,7 +347,7 @@ function ProductsList() {
                             {product.id}
                           </TableCell>
                           <TableCell className="min-w-[300px] max-w-[300px] text-sm font-medium line-clamp-2 break-words">
-                            {product.name}
+                            {product.name || product.type?.name || "---"}
                           </TableCell>
                           <TableCell className="text-right font-medium">
                             {product.initialPrice?.toLocaleString() || "0"}
@@ -339,7 +378,10 @@ function ProductsList() {
                                   <Plus className="mr-2 h-4 w-4" /> Thêm biến thể
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-destructive">
+                                <DropdownMenuItem 
+                                  className="text-destructive cursor-pointer"
+                                  onClick={() => handleDeleteProduct(product.id)}
+                                >
                                   <Trash2 className="mr-2 h-4 w-4" /> Xóa hàng
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
@@ -367,7 +409,7 @@ function ProductsList() {
                                   {variant.id}
                                 </TableCell>
                                 <TableCell className="min-w-[300px] max-w-[300px] pl-8 text-sm italic text-muted-foreground line-clamp-2 break-words">
-                                  {variant.name}
+                                  {variant.name || "---"}
                                 </TableCell>
                                 <TableCell className="text-right text-muted-foreground">
                                   {variant.initialPrice?.toLocaleString() || "0"}
@@ -394,7 +436,10 @@ function ProductsList() {
                                         <Edit className="mr-2 h-4 w-4" /> Sửa biến thể
                                       </DropdownMenuItem>
                                       <DropdownMenuSeparator />
-                                      <DropdownMenuItem className="text-destructive">
+                                      <DropdownMenuItem 
+                                        className="text-destructive cursor-pointer"
+                                        onClick={() => handleDeleteVariant(product.id, variant.id)}
+                                      >
                                         <Trash2 className="mr-2 h-4 w-4" /> Xóa biến thể
                                       </DropdownMenuItem>
                                     </DropdownMenuContent>
