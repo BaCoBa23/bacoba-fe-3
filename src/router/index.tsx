@@ -4,6 +4,7 @@ import { Route, Routes } from "react-router-dom";
 import ProductsList from "@/pages/Products/ProductsList";
 import ReceivedNotesList from "@/pages/ReceivedNote/ReceivedNotesList";
 import ProvidersList from "@/pages/Provider/ProvidersList";
+import SaleProcess from "@/pages/Sale/SaleProcess";
 
 function AppRoutes() {
   return (
@@ -13,6 +14,8 @@ function AppRoutes() {
       <Route path="/products" element={<ProductsList />} />
       <Route path="/received-notes" element={<ReceivedNotesList />} />
       <Route path="/providers" element={<ProvidersList />} />
+      <Route path="/sale" element={<SaleProcess />} />
+      <Route path="/bills" element={<SaleProcess />} />
     </Routes>
   );
 }

@@ -2,8 +2,8 @@
 
 function SaleProcess() {
   return (
-    <div>
-      
+    <div className="w-full h-full p-5 flex flex-wrap gap-y-6">
+        
     </div>
   )
 }

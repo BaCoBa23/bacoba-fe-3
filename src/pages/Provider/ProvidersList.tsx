@@ -41,6 +41,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import TagCombobox from "@/components/ui/TagCombobox";
+import AddNewProvider from "@/components/provider/AddNewProvider";
+import AddNewHistory from "@/components/provider/AddNewHistory";
+import EditProviderDialog from "@/components/provider/EditProviderDialog";
+import EditHistoryProvider from "@/components/provider/EditHistoryProvider";
 
 function ProvidersList() {
   interface Option {
@@ -71,7 +75,10 @@ function ProvidersList() {
 
   // --- TÍNH TOÁN TỔNG CỘNG CHO TABLE CHA ---
   const grandTotalBuy = filteredProviders.reduce((sum, p) => sum + p.total, 0);
-  const grandTotalDebt = filteredProviders.reduce((sum, p) => sum + p.debtTotal, 0);
+  const grandTotalDebt = filteredProviders.reduce(
+    (sum, p) => sum + p.debtTotal,
+    0
+  );
   const grandTotalPaid = grandTotalBuy - grandTotalDebt;
 
   const toggleRowExpand = (id: string) => {
@@ -115,11 +122,7 @@ function ProvidersList() {
           />
         </div>
         <div className="basis-1/3 flex justify-around items-center">
-          <button
-            className="bg-primary text-primary-foreground hover:opacity-90 px-4 py-2 rounded-md flex items-center text-sm font-medium transition-colors"
-          >
-            <Plus className="mr-2 h-4 w-4" /> Thêm nhà cung cấp
-          </button>
+          <AddNewProvider />
         </div>
       </div>
 
@@ -186,8 +189,10 @@ function ProvidersList() {
             {/* --- HÀNG TỔNG CỘNG CỦA TABLE CHA --- */}
             {filteredProviders.length > 0 && (
               <TableRow className="bg-muted/50 hover:bg-muted/50 border-t-2 border-border font-bold">
-                <TableCell colSpan={5} className="text-right text-foreground py-4">
-                </TableCell>
+                <TableCell
+                  colSpan={5}
+                  className="text-right text-foreground py-4"
+                ></TableCell>
                 <TableCell className="text-right text-foreground">
                   {grandTotalBuy.toLocaleString()}
                 </TableCell>
@@ -248,9 +253,7 @@ function ProvidersList() {
                         onCheckedChange={() => handleSelectRow(prov.id)}
                       />
                     </TableCell>
-                    <TableCell className="text-sm ">
-                      {prov.id}
-                    </TableCell>
+                    <TableCell className="text-sm ">{prov.id}</TableCell>
                     <TableCell className="text-sm font-bold text-primary">
                       {prov.name}
                     </TableCell>
@@ -273,27 +276,28 @@ function ProvidersList() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            className="h-8 w-8 p-0 hover:bg-accent"
+                        {/* <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              className="h-8 w-8 p-0 hover:bg-accent"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="end"
+                            className="bg-popover border-border"
                           >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          className="bg-popover border-border"
-                        >
-                          <DropdownMenuItem
-                            className="hover:bg-accent cursor-pointer"
-                            onClick={() => console.log("Edit", prov.id)}
-                          >
-                            <Edit className="mr-2 h-4 w-4" /> Chỉnh sửa
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            <DropdownMenuItem
+                              className="hover:bg-accent cursor-pointer"
+                              onSelect={(event) => event.preventDefault()}
+                            >
+                      
+                              <EditProviderDialog provider={prov}/>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu> */}
                     </TableCell>
                   </TableRow>
 
@@ -382,12 +386,15 @@ function ProvidersList() {
                                             >
                                               <DropdownMenuItem
                                                 className="hover:bg-accent cursor-pointer"
-                                                onClick={() =>
-                                                  console.log("Edit", prov.id)
-                                                }
+                                                
+                                                onSelect={(event) => event.preventDefault()}
                                               >
-                                                <Edit className="mr-2 h-4 w-4" />{" "}
-                                                Chỉnh sửa
+                                                <EditHistoryProvider 
+                                                providerId={prov.id}
+                                                history={hist}
+                                                providerName={prov.name}
+                                                currentDebtOfProvider={prov.debtTotal}
+                                                />
                                               </DropdownMenuItem>
                                             </DropdownMenuContent>
                                           </DropdownMenu>
@@ -423,22 +430,15 @@ function ProvidersList() {
                           </div>
 
                           <div className="flex justify-end items-center gap-3">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="flex items-center gap-2 border-chart-2 text-chart-2 hover:bg-chart-2/10"
-                            >
-                              <Wallet className="w-4 h-4" /> Lập phiếu chi trả
-                              nợ
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="flex items-center gap-2 border-border text-foreground hover:bg-accent"
-                            >
-                              <Edit2 className="w-4 h-4" /> Chỉnh sửa thông
-                              tin
-                            </Button>
+                            <AddNewHistory
+                              providerId={prov.id}
+                              providerName={prov.name}
+                              currentDebt={prov.debtTotal}
+                            />
+                            
+                            
+                              <EditProviderDialog provider={prov}/>
+                           
                           </div>
                         </div>
                       </TableCell>
@@ -447,8 +447,6 @@ function ProvidersList() {
                 </React.Fragment>
               );
             })}
-
-            
           </TableBody>
         </Table>
 

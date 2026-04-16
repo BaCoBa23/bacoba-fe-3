@@ -52,6 +52,18 @@ function AppHeader() {
       description: "Lưu trữ thông tin liên lạc và lịch sử giao dịch với đối tác.",
     }
   ];
+  const sales: { title: string; href: string; description: string }[] = [
+    {
+      title: "Bán hàng",
+      href: "/sale",
+      description: "Giao diện thanh toán nhanh, tạo đơn hàng và xử lý giao dịch.",
+    },
+    {
+      title: "Danh sách hóa đơn",
+      href: "/bills",
+      description: "Tra cứu, quản lý và in lại các hóa đơn đã thanh toán.",
+    }
+  ];
   
   const navigate = useNavigate();
   const { isAuthenticated, user, logout } = useAppContext();
@@ -108,6 +120,24 @@ function AppHeader() {
                 <NavigationMenuContent>
                   <ul className="grid w-[300px] gap-2  grid-cols-1 ">
                     {providers.map((product) => (
+                      <ListItem
+                        key={product.title}
+                        title={product.title}
+                        href={product.href}
+                      >
+                        {product.description}
+                      </ListItem>
+                    ))}
+                  </ul>
+                </NavigationMenuContent>
+              </NavigationMenuItem>
+              <NavigationMenuItem>
+                <NavigationMenuTrigger className="bg-transparent mr-1">
+                  Bán hàng
+                </NavigationMenuTrigger>
+                <NavigationMenuContent>
+                  <ul className="grid w-[300px] gap-2  grid-cols-1 ">
+                    {sales.map((product) => (
                       <ListItem
                         key={product.title}
                         title={product.title}
