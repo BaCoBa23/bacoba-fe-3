@@ -20,9 +20,11 @@ import {
   import { useForm, useWatch } from "react-hook-form";
   import z from "zod";
   import { Button } from "../ui/button";
-  import { Wallet, CalendarIcon, ArrowRightLeft, Receipt, Info } from "lucide-react";
+  import { Wallet, CalendarIcon, ArrowRightLeft, Receipt, Info, Loader2 } from "lucide-react";
   import { Input } from "../ui/input";
   import { Textarea } from "../ui/textarea";
+  import { useState } from "react";
+  import { createHistoryProvider } from "@/services/api";
   
   interface AddNewHistoryProps {
     providerId: string;
@@ -31,6 +33,9 @@ import {
   }
   
   function AddNewHistory({ providerId, providerName, currentDebt }: AddNewHistoryProps) {
+    const [open, setOpen] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+
     const FormSchema = z.object({
       paidAmount: z.coerce.number().min(1, "Số tiền thanh toán phải lớn hơn 0"),
       description: z.string().optional().nullable(),
@@ -56,10 +61,35 @@ import {
   
     const remainingDebt = currentDebt - (paidAmount || 0);
   
-    const onSubmit = (data: FormValues) => {
-      const payload = { ...data, providerId, status: "active" };
-      console.log("Submit:", payload);
-      form.reset();
+    const onSubmit = async (data: FormValues) => {
+      try {
+        setSubmitting(true);
+        const response = await createHistoryProvider({
+          providerId: parseInt(providerId),
+          paidAmount: data.paidAmount,
+          description: data.description || undefined,
+          status: "active",
+        });
+
+        if (response.success) {
+          alert("Tạo lịch sử thanh toán thành công!");
+          form.reset();
+          setOpen(false);
+          // Refresh page to see the new history
+          window.location.reload();
+        } else {
+          alert(`Lỗi: ${response.message}`);
+        }
+      } catch (error: any) {
+        console.error("Error creating history:", error);
+        const errorMsg =
+          error.response?.data?.message ||
+          error.message ||
+          "Lỗi tạo lịch sử thanh toán";
+        alert(`Lỗi: ${errorMsg}`);
+      } finally {
+        setSubmitting(false);
+      }
     };
   
     const formatVND = (amount: number) => {
@@ -70,7 +100,7 @@ import {
     };
   
     return (
-      <Dialog>
+      <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button 
             variant="outline" 
@@ -210,12 +240,13 @@ import {
                   <p className="text-xs text-muted-foreground italic font-medium">Mã NCC: {providerId}</p>
                   <div className="flex gap-3">
                       <DialogClose asChild>
-                          <Button variant="ghost" type="button" className="px-6 font-semimedium text-muted-foreground hover:text-foreground">
+                          <Button variant="ghost" type="button" disabled={submitting} className="px-6 font-semimedium text-muted-foreground hover:text-foreground">
                               Hủy
                           </Button>
                       </DialogClose>
-                      <Button type="submit" className="bg-chart-2/50 text-chart-2/50-foreground hover:opacity-90 px-10 shadow-lg shadow-chart-2/50/20 font-medium transition-all active:scale-95">
-                          Xác nhận 
+                      <Button type="submit" disabled={submitting} className="bg-chart-2/50 text-chart-2/50-foreground hover:opacity-90 px-10 shadow-lg shadow-chart-2/50/20 font-medium transition-all active:scale-95">
+                          {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          {submitting ? "Đang xử lý..." : "Xác nhận"}
                       </Button>
                   </div>
               </div>

@@ -136,4 +136,260 @@ export const deleteProduct = async (id: string) => {
   }
 };
 
+// ===== PROVIDER SERVICES =====
+export interface GetProvidersParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  status?: string;
+  order?: Record<string, "asc" | "desc">;
+}
+
+export interface ProviderResponse {
+  id: number;
+  name: string;
+  phoneNumber?: string;
+  email?: string;
+  debtTotal: number;
+  total: number;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateProviderInput {
+  name: string;
+  phoneNumber?: string;
+  email?: string;
+  debtTotal?: number;
+  total?: number;
+  status?: string;
+}
+
+export interface UpdateProviderInput {
+  name?: string;
+  phoneNumber?: string;
+  email?: string;
+  debtTotal?: number;
+  total?: number;
+  status?: string;
+}
+
+export interface ProvidersApiResponse {
+  success: boolean;
+  message: string;
+  data: ProviderResponse[];
+  meta: {
+    totalItems: number;
+    currentPage: number;
+    pageSize: number;
+    totalPages: number;
+  };
+}
+
+export interface ProviderDetailResponse {
+  success: boolean;
+  message: string;
+  data: ProviderResponse;
+}
+
+// Get danh sách nhà cung cấp
+export const getProviders = async (params?: GetProvidersParams) => {
+  try {
+    const response = await apiClient.get<ProvidersApiResponse>("/providers", {
+      params,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching providers:", error);
+    throw error;
+  }
+};
+
+// Get chi tiết nhà cung cấp
+export const getProviderById = async (id: number) => {
+  try {
+    const response = await apiClient.get<ProviderDetailResponse>(
+      `/providers/${id}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching provider ${id}:`, error);
+    throw error;
+  }
+};
+
+// Create nhà cung cấp mới
+export const createProvider = async (data: CreateProviderInput) => {
+  try {
+    const response = await apiClient.post<ProviderDetailResponse>(
+      "/providers",
+      data
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error creating provider:", error);
+    throw error;
+  }
+};
+
+// Update nhà cung cấp
+export const updateProvider = async (
+  id: number,
+  data: UpdateProviderInput
+) => {
+  try {
+    const response = await apiClient.put<ProviderDetailResponse>(
+      `/providers/${id}`,
+      data
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`Error updating provider ${id}:`, error);
+    throw error;
+  }
+};
+
+// Delete nhà cung cấp
+export const deleteProvider = async (id: number) => {
+  try {
+    const response = await apiClient.delete(`/providers/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error deleting provider ${id}:`, error);
+    throw error;
+  }
+};
+
+// ===== HISTORY PROVIDER SERVICES =====
+export interface HistoryProviderResponse {
+  id: number;
+  providerId: number;
+  paidAmount: number;
+  description?: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateHistoryInput {
+  providerId: number;
+  paidAmount: number;
+  description?: string;
+  status?: string;
+}
+
+export interface UpdateHistoryInput {
+  paidAmount?: number;
+  description?: string;
+  status?: string;
+}
+
+export interface HistoryProvidersApiResponse {
+  success: boolean;
+  message: string;
+  data: HistoryProviderResponse[];
+  meta: {
+    totalItems: number;
+    currentPage: number;
+    pageSize: number;
+    totalPages: number;
+  };
+}
+
+export interface HistoryDetailResponse {
+  success: boolean;
+  message: string;
+  data: HistoryProviderResponse;
+}
+
+// Get danh sách lịch sử thanh toán (tất cả)
+export const getHistoryProviders = async (params?: GetProvidersParams) => {
+  try {
+    const response = await apiClient.get<HistoryProvidersApiResponse>(
+      "/history-providers",
+      { params }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching history providers:", error);
+    throw error;
+  }
+};
+
+// Get lịch sử thanh toán của một nhà cung cấp
+export const getHistoryProvidersByProviderId = async (
+  providerId: number,
+  params?: GetProvidersParams
+) => {
+  try {
+    const response = await apiClient.get<HistoryProvidersApiResponse>(
+      `/history-providers/provider/${providerId}`,
+      { params }
+    );
+    return response.data;
+  } catch (error) {
+    console.error(
+      `Error fetching history providers for provider ${providerId}:`,
+      error
+    );
+    throw error;
+  }
+};
+
+// Get chi tiết lịch sử
+export const getHistoryProviderById = async (id: number) => {
+  try {
+    const response = await apiClient.get<HistoryDetailResponse>(
+      `/history-providers/${id}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching history provider ${id}:`, error);
+    throw error;
+  }
+};
+
+// Create lịch sử thanh toán mới
+export const createHistoryProvider = async (data: CreateHistoryInput) => {
+  try {
+    const response = await apiClient.post<HistoryDetailResponse>(
+      "/history-providers",
+      data
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error creating history provider:", error);
+    throw error;
+  }
+};
+
+// Update lịch sử thanh toán
+export const updateHistoryProvider = async (
+  id: number,
+  data: UpdateHistoryInput
+) => {
+  try {
+    const response = await apiClient.put<HistoryDetailResponse>(
+      `/history-providers/${id}`,
+      data
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`Error updating history provider ${id}:`, error);
+    throw error;
+  }
+};
+
+// Delete lịch sử thanh toán
+export const deleteHistoryProvider = async (id: number) => {
+  try {
+    const response = await apiClient.delete(`/history-providers/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error deleting history provider ${id}:`, error);
+    throw error;
+  }
+};
+
 export default apiClient;

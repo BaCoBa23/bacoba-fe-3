@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogClose,
@@ -29,10 +29,12 @@ import {
   Save,
   Trash2,
   Edit,
+  Loader2,
 } from "lucide-react";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { cn } from "@/lib/utils";
+import { updateHistoryProvider, deleteHistoryProvider } from "@/services/api";
 
 // Interface cho lịch sử thanh toán
 interface HistoryProvider {
@@ -55,6 +57,9 @@ function EditHistoryProvider({
   providerName,
   currentDebtOfProvider,
 }: EditHistoryProviderProps) {
+  const [open, setOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
   const FormSchema = z.object({
     paidAmount: z.coerce.number().min(1, "Số tiền phải lớn hơn 0"),
     description: z.string().optional().nullable(),
@@ -90,8 +95,57 @@ function EditHistoryProvider({
   const debtBeforeThisBill = currentDebtOfProvider + history.paidAmount;
   const newRemainingDebt = debtBeforeThisBill - (newPaidAmount || 0);
 
-  const onSubmit = (data: FormValues) => {
-    console.log("Cập nhật phiếu chi:", { ...data, id: history.id });
+  const onSubmit = async (data: FormValues) => {
+    try {
+      setSubmitting(true);
+      const response = await updateHistoryProvider(parseInt(history.id), {
+        paidAmount: data.paidAmount,
+        description: data.description || undefined,
+      });
+
+      if (response.success) {
+        alert("Cập nhật lịch sử thanh toán thành công!");
+        setOpen(false);
+        // Refresh page to see updates
+        window.location.reload();
+      } else {
+        alert(`Lỗi: ${response.message}`);
+      }
+    } catch (error: any) {
+      console.error("Error updating history:", error);
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Lỗi cập nhật lịch sử thanh toán";
+      alert(`Lỗi: ${errorMsg}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteHistory = async () => {
+    if (window.confirm("Bạn chắc chắn muốn xóa phiếu chi này?")) {
+      try {
+        setSubmitting(true);
+        const response = await deleteHistoryProvider(parseInt(history.id));
+        if (response.success) {
+          alert("Xóa phiếu chi thành công!");
+          setOpen(false);
+          window.location.reload();
+        } else {
+          alert(`Lỗi: ${response.message}`);
+        }
+      } catch (error: any) {
+        console.error("Error deleting history:", error);
+        const errorMsg =
+          error.response?.data?.message ||
+          error.message ||
+          "Lỗi xóa phiếu chi";
+        alert(`Lỗi: ${errorMsg}`);
+      } finally {
+        setSubmitting(false);
+      }
+    }
   };
 
   const formatVND = (amount: number) => {
@@ -102,7 +156,7 @@ function EditHistoryProvider({
   };
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
           variant="ghost"
@@ -116,8 +170,6 @@ function EditHistoryProvider({
 
       <DialogContent 
         className="sm:max-w-[600px] p-0 gap-0 overflow-hidden border-border shadow-2xl bg-background"
-        // Chặn đóng khi click ra ngoài hoặc bấm Escape để ép dùng nút Hủy/X
-
       >
         <Form {...form}>
           <form
@@ -257,16 +309,19 @@ function EditHistoryProvider({
               <Button
                 variant="ghost"
                 type="button"
+                disabled={submitting}
                 className="text-destructive hover:bg-destructive/10 hover:text-destructive font-bold gap-2"
-                onClick={() => console.log("Hủy phiếu chi:", history.id)}
+                onClick={handleDeleteHistory}
               >
-                <Trash2 className="w-4 h-4" /> Hủy phiếu
+                {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                <Trash2 className="w-4 h-4" /> {submitting ? "Đang xóa..." : "Hủy phiếu"}
               </Button>
               <div className="flex gap-3">
                 <DialogClose asChild>
                   <Button
                     variant="outline"
                     type="button"
+                    disabled={submitting}
                     className="px-6 font-semibold border-border hover:bg-accent text-foreground"
                   >
                     Hủy bỏ
@@ -274,9 +329,11 @@ function EditHistoryProvider({
                 </DialogClose>
                 <Button
                   type="submit"
+                  disabled={submitting}
                   className="bg-primary text-primary-foreground hover:opacity-90 px-8 font-bold gap-2 shadow-lg shadow-primary/20"
                 >
-                  <Save className="w-4 h-4" /> Cập nhật phiếu
+                  {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  <Save className="w-4 h-4" /> {submitting ? "Đang cập nhật..." : "Cập nhật phiếu"}
                 </Button>
               </div>
             </div>

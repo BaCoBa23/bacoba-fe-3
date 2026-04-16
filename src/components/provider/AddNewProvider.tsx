@@ -33,45 +33,74 @@ import {
   import { useForm } from "react-hook-form";
   import z from "zod";
   import { Button } from "../ui/button";
-  import { Plus, UserPlus } from "lucide-react";
+  import { Plus, UserPlus, Loader2 } from "lucide-react";
   import { Input } from "../ui/input";
   import { Separator } from "../ui/separator";
+  import { useState } from "react";
+  import { createProvider } from "@/services/api";
   
   function AddNewProvider() {
+    const [open, setOpen] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+
     const FormSchema = z.object({
         name: z.string().min(1, "Tên nhà cung cấp là bắt buộc"),
         phoneNumber: z.string().optional().nullable(),
         email: z.string().email("Email không hợp lệ").optional().or(z.literal("")).nullable(),
-        status: z.string().min(1, "Trạng thái là bắt buộc"), // Bỏ .default() ở đây nếu bạn đã có defaultValues
+        status: z.string().min(1, "Trạng thái là bắt buộc"),
         debtTotal: z.coerce.number().min(0, "Nợ không được âm"),
         total: z.coerce.number().min(0, "Tổng mua không được âm"),
       });
       
-      // 2. Để TypeScript tự suy luận kiểu từ Schema (thay vì tự viết interface)
       type FormValues = z.infer<typeof FormSchema>;
       
-      // 3. Khai báo useForm mà không cần truyền Generic quá phức tạp, 
-      // hoặc đảm bảo defaultValues khớp 100%
       const form = useForm<FormValues>({
         resolver: zodResolver(FormSchema),
         defaultValues: {
           name: "",
           phoneNumber: "",
           email: "",
-          status: "active", // Giá trị mặc định thực tế nằm ở đây
+          status: "active",
           debtTotal: 0,
           total: 0,
         },
       });
   
-    const onSubmit = (data: FormValues) => {
-      console.log("Dữ liệu Nhà cung cấp mới:", data);
-      // Logic gọi API ở đây
-      form.reset();
+    const onSubmit = async (data: FormValues) => {
+      try {
+        setSubmitting(true);
+        const response = await createProvider({
+          name: data.name,
+          phoneNumber: data.phoneNumber || undefined,
+          email: data.email || undefined,
+          status: data.status,
+          debtTotal: data.debtTotal,
+          total: data.total,
+        });
+
+        if (response.success) {
+          alert("Tạo nhà cung cấp thành công!");
+          form.reset();
+          setOpen(false);
+          // Trigger refresh in parent component
+          window.location.reload();
+        } else {
+          alert(`Lỗi: ${response.message}`);
+        }
+      } catch (error: any) {
+        console.error("Error creating provider:", error);
+        const errorMsg =
+          error.response?.data?.message ||
+          error.message ||
+          "Lỗi tạo nhà cung cấp";
+        alert(`Lỗi: ${errorMsg}`);
+      } finally {
+        setSubmitting(false);
+      }
     };
   
     return (
-      <Dialog>
+      <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button variant={"outline"} className="">
             <Plus className="mr-2 h-4 w-4" /> Thêm nhà cung cấp
@@ -247,11 +276,14 @@ import {
                 <DialogFooter className="flex items-center">
                   <div className="flex gap-2">
                     <DialogClose asChild>
-                      <Button variant="outline" type="button">
+                      <Button variant="outline" type="button" disabled={submitting}>
                         Hủy bỏ
                       </Button>
                     </DialogClose>
-                    <Button type="submit">Lưu nhà cung cấp</Button>
+                    <Button type="submit" disabled={submitting}>
+                      {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      {submitting ? "Đang lưu..." : "Lưu nhà cung cấp"}
+                    </Button>
                   </div>
                 </DialogFooter>
               </div>

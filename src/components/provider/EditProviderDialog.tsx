@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogClose,
@@ -37,9 +37,11 @@ import {
   Save,
   Edit,
   Edit2,
+  Loader2,
 } from "lucide-react";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
+import { updateProvider } from "@/services/api";
 
 // Giả định cấu trúc Provider từ danh sách của bạn
 interface Provider {
@@ -50,6 +52,10 @@ interface Provider {
   status: string;
   debtTotal: number;
   total: number;
+  createdAt?: string;
+  updatedAt?: string;
+  histories?: any[];
+  receivedNotes?: any[];
 }
 
 interface EditProviderDialogProps {
@@ -58,6 +64,9 @@ interface EditProviderDialogProps {
 }
 
 function EditProviderDialog({ provider, trigger }: EditProviderDialogProps) {
+  const [open, setOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
   const FormSchema = z.object({
     name: z.string().min(1, "Tên nhà cung cấp là bắt buộc"),
     phoneNumber: z.string().optional().nullable(),
@@ -92,10 +101,34 @@ function EditProviderDialog({ provider, trigger }: EditProviderDialogProps) {
     });
   }, [provider, form]);
 
-  const onSubmit = (data: FormValues) => {
-    const payload = { ...data, id: provider.id };
-    console.log("Cập nhật nhà cung cấp:", payload);
-    // Thực hiện gọi API Update ở đây
+  const onSubmit = async (data: FormValues) => {
+    try {
+      setSubmitting(true);
+      const response = await updateProvider(parseInt(provider.id), {
+        name: data.name,
+        phoneNumber: data.phoneNumber || undefined,
+        email: data.email || undefined,
+        status: data.status,
+      });
+
+      if (response.success) {
+        alert("Cập nhật nhà cung cấp thành công!");
+        setOpen(false);
+        // Refresh page to see updates
+        window.location.reload();
+      } else {
+        alert(`Lỗi: ${response.message}`);
+      }
+    } catch (error: any) {
+      console.error("Error updating provider:", error);
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Lỗi cập nhật nhà cung cấp";
+      alert(`Lỗi: ${errorMsg}`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const formatVND = (amount: number) => {
@@ -106,7 +139,7 @@ function EditProviderDialog({ provider, trigger }: EditProviderDialogProps) {
   };
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="">
           <Edit2 className="w-4 h-4" /> Chỉnh sửa thông tin
@@ -279,6 +312,7 @@ function EditProviderDialog({ provider, trigger }: EditProviderDialogProps) {
                   <Button
                     variant="outline"
                     type="button"
+                    disabled={submitting}
                     className="px-6 font-semibold"
                   >
                     Hủy
@@ -286,9 +320,11 @@ function EditProviderDialog({ provider, trigger }: EditProviderDialogProps) {
                 </DialogClose>
                 <Button
                   type="submit"
+                  disabled={submitting}
                   className="bg-primary text-primary-foreground hover:opacity-90 px-8 shadow-lg shadow-primary/20 font-bold gap-2"
                 >
-                  <Save className="w-4 h-4" /> Lưu thay đổi
+                  {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  <Save className="w-4 h-4" /> {submitting ? "Đang lưu..." : "Lưu thay đổi"}
                 </Button>
               </div>
             </div>
