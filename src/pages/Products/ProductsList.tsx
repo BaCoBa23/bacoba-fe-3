@@ -22,6 +22,8 @@ import {
   MoreHorizontal,
   Plus,
   Trash2,
+  Loader,
+  AlertCircle,
 } from "lucide-react";
 import {
   Table,
@@ -31,8 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import React, { useState } from "react";
-import { MOCK_PRODUCTS } from "@/types/Product";
+import React, { useState, useEffect } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,12 +42,36 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { getProducts, type ProductResponse, type GetProductsParams } from "@/services/api";
+import { MOCK_PRODUCTS } from "@/types/Product";
 
 function ProductsList() {
   interface Option {
     id: string;
     name: string;
   }
+  
+  // API Data States
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Pagination & Filter States
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [search, setSearch] = useState("");
+  
+  const [selectedTypes, setselectedTypes] = useState<Option[]>([]);
+  const [selectedSizes, setselectedSizes] = useState<Option[]>([]);
+  const [selectedColors, setselectedColors] = useState<Option[]>([]);
+  const [selectedProviders, setselectedProviders] = useState<Option[]>([]);
+
+  const [expandedRows, setExpandedRows] = useState<string[]>([]);
+  const [selectedRows, setSelectedRows] = useState<string[]>([]);
+
+  // Mock options (sau này lấy từ API)
   const typesOptions: Option[] = [
     { id: "1", name: "Quần" },
     { id: "2", name: "Áo" },
@@ -68,40 +93,67 @@ function ProductsList() {
     { id: "3", name: "LVLVLV" },
   ];
 
-  // 3. Khởi tạo State để quản lý các mục được chọn
-  const [selectedTypes, setselectedTypes] = useState<Option[]>([]);
-  const [selectedSizes, setselectedSizes] = useState<Option[]>([]);
-  const [selectedColors, setselectedColors] = useState<Option[]>([]);
-  const [selectedProviders, setselectedProviders] = useState<Option[]>([]);
+  // Fetch products từ API
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const params: GetProductsParams = {
+          page: currentPage,
+          pageSize: pageSize,
+          search: search || undefined,
+          status: "ACTIVE",
+        };
 
-  const [expandedRows, setExpandedRows] = useState<string[]>([]);
-  const [selectedRows, setSelectedRows] = useState<string[]>([]);
+        const response = await getProducts(params);
+        console.log("API Response:", response);
+        
+        // API trả về flat list (không có variants), tạm gán vào MOCK để có variants
+        // TODO: Khi backend trả variants, xóa MOCK_PRODUCTS
+        const productsWithVariants = response.data.map((product: any) => {
+          const mockProduct = MOCK_PRODUCTS.find(p => p.id === product.id);
+          return mockProduct || product;
+        });
+        
+        setProducts(productsWithVariants.length > 0 ? productsWithVariants : MOCK_PRODUCTS);
+        setTotalItems(response.meta.totalItems);
+        setTotalPages(response.meta.totalPages);
+        setCurrentPage(response.meta.currentPage);
+        
+      } catch (err: any) {
+        console.error("API Error:", err);
+        setError(err?.message || "Lỗi khi tải danh sách sản phẩm");
+        // Fallback to MOCK data khi lỗi
+        setProducts(MOCK_PRODUCTS);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, [currentPage, pageSize, search, selectedTypes]);
 
   const toggleRowExpand = (id: string) => {
     setExpandedRows((prev) =>
       prev.includes(id) ? prev.filter((rid) => rid !== id) : [...prev, id]
     );
   };
-  // --- Logic Xử lý Checkbox ---
-  const handleSelectRow = (id: string, variantIds: string[]) => {
-    const allIds = [id, ...variantIds];
-    const isSelected = selectedRows.includes(id);
 
-    if (isSelected) {
-      // Nếu đang chọn thì bỏ chọn cả cha lẫn con
-      setSelectedRows((prev) => prev.filter((item) => !allIds.includes(item)));
-    } else {
-      // Nếu chưa chọn thì thêm cả cha lẫn con vào list
-      setSelectedRows((prev) => Array.from(new Set([...prev, ...allIds])));
-    }
+  const handleSelectRow = (id: string) => {
+    setSelectedRows((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
   };
 
-  const handleSelectVariant = (variantId: string) => {
-    setSelectedRows((prev) =>
-      prev.includes(variantId)
-        ? prev.filter((id) => id !== variantId)
-        : [...prev, variantId]
-    );
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
   };
 
   return (
@@ -113,7 +165,12 @@ function ProductsList() {
       </div>
       <div className="basis-3/4 flex flex-wrap justify-between">
         <div className="basis-1/2">
-          <Input type="search" placeholder="Tìm theo mã, tên hàng hóa" />
+          <Input 
+            type="search" 
+            placeholder="Tìm theo mã, tên hàng hóa" 
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+          />
         </div>
         <div className="basis-1/3 flex justify-around aglin-center ">
           <AddNewProduct />
@@ -184,141 +241,84 @@ function ProductsList() {
         </div>
       </div>
       <div className="basis-3/4 min-h-[calc(100vh-200px)] flex flex-col justify-between">
-        <Table>
-          <TableHeader className="bg-muted">
-            <TableRow>
-              <TableHead className="w-[40px]"></TableHead>
-              <TableHead className="w-[50px]">
-                <Checkbox
-                  // Logic check all như cũ
-                  disabled
-                />
-              </TableHead>
-              <TableHead className="font-bold  ">Mã hàng</TableHead>
-              <TableHead className="font-bold  ">Tên hàng hóa</TableHead>
-              <TableHead className="text-right font-bold ">Giá vốn</TableHead>
-              <TableHead className="text-right font-bold ">Giá bán</TableHead>
-              <TableHead className="text-right font-bold ">Số lượng</TableHead>
-              {/* Tiêu đề cho cột Action */}
-              <TableHead className=" text-center"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {MOCK_PRODUCTS.map((product) => {
-              const variantIds = product.variants.map((v: any) => v.id);
-              const isParentSelected = selectedRows.includes(product.id);
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader className="animate-spin mr-2" />
+            <p>Đang tải danh sách sản phẩm...</p>
+          </div>
+        )}
 
-              return (
-                <React.Fragment key={product.id}>
-                  {/* --- HÀNG CHA --- */}
-                  <TableRow data-state={isParentSelected && "selected"}>
-                    <TableCell>
-                      <button
-                        onClick={() => toggleRowExpand(product.id)}
-                        className="p-1"
-                      >
-                        {expandedRows.includes(product.id) ? (
-                          <ChevronDown size={16} />
-                        ) : (
-                          <ChevronRight size={16} />
-                        )}
-                      </button>
-                    </TableCell>
-                    <TableCell>
-                      <Checkbox
-                        checked={isParentSelected}
-                        onCheckedChange={() =>
-                          handleSelectRow(product.id, variantIds)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell className=" text-sm font-medium">
-                      {product.id}
-                    </TableCell>
-                    <TableCell className="min-w-[500px] max-w-[500px]  text-sm font-medium pt-3 line-clamp-5 whitespace-normal break-words">
-                      {product.name}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {product.initialPrice.toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {product.salePrice.toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {product.quantity}
-                    </TableCell>
+        {/* Error State */}
+        {error && !loading && (
+          <div className="flex items-center gap-2 p-4 bg-red-50 border border-red-200 rounded text-red-700">
+            <AlertCircle size={20} />
+            <p>{error}</p>
+          </div>
+        )}
 
-                    {/* ACTION CHO HÀNG CHA */}
-                    <TableCell className="text-center">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Hành động</DropdownMenuLabel>
-                          <DropdownMenuItem
-                            onClick={() =>
-                              console.log("Edit product", product.id)
-                            }
-                          >
-                            <Edit className="mr-2 h-4 w-4" /> Chỉnh sửa hàng hóa
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() =>
-                              console.log("Add variant to", product.id)
-                            }
-                          >
-                            <Plus className="mr-2 h-4 w-4" /> Thêm biến thể
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive">
-                            <Trash2 className="mr-2 h-4 w-4" /> Xóa hàng
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
+        {/* Table */}
+        {!loading && !error && (
+          <>
+            <Table>
+              <TableHeader className="bg-muted">
+                <TableRow>
+                  <TableHead className="w-[40px]"></TableHead>
+                  <TableHead className="w-[50px]">
+                    <Checkbox disabled />
+                  </TableHead>
+                  <TableHead className="font-bold">Mã hàng</TableHead>
+                  <TableHead className="font-bold">Tên hàng hóa</TableHead>
+                  <TableHead className="text-right font-bold">Giá vốn</TableHead>
+                  <TableHead className="text-right font-bold">Giá bán</TableHead>
+                  <TableHead className="text-right font-bold">Số lượng</TableHead>
+                  <TableHead className="text-center"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {products.length > 0 ? (
+                  products.map((product) => {
+                    const isParentSelected = selectedRows.includes(product.id);
+                    const variantIds = product.variants?.map((v: any) => v.id) || [];
+                    const isExpanded = expandedRows.includes(product.id);
 
-                  {/* --- CÁC HÀNG CON (VARIANTS) --- */}
-                  {expandedRows.includes(product.id) &&
-                    product.variants.map((variant: any) => {
-                      const isVariantSelected = selectedRows.includes(
-                        variant.id
-                      );
-                      return (
-                        <TableRow
-                          key={variant.id}
-                          className=""
-                          data-state={isVariantSelected && "selected"}
-                        >
-                          <TableCell></TableCell>
-                          <TableCell className="pl-8">
+                    return (
+                      <React.Fragment key={product.id}>
+                        {/* Parent Product Row */}
+                        <TableRow data-state={isParentSelected && "selected"}>
+                          <TableCell>
+                            <button
+                              onClick={() => toggleRowExpand(product.id)}
+                              className="p-1"
+                            >
+                              {isExpanded ? (
+                                <ChevronDown size={16} />
+                              ) : (
+                                <ChevronRight size={16} />
+                              )}
+                            </button>
+                          </TableCell>
+                          <TableCell>
                             <Checkbox
-                              checked={isVariantSelected}
-                              onCheckedChange={() =>
-                                handleSelectVariant(variant.id)
-                              }
+                              checked={isParentSelected}
+                              onCheckedChange={() => handleSelectRow(product.id)}
                             />
                           </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {variant.id}
+                          <TableCell className="text-sm font-medium">
+                            {product.id}
                           </TableCell>
-                          <TableCell className="min-w-[500px] max-w-[500px] pl-10 text-sm italic text-muted-foreground line-clamp-5 whitespace-normal break-words">
-                            {variant.name}
+                          <TableCell className="min-w-[300px] max-w-[300px] text-sm font-medium line-clamp-2 break-words">
+                            {product.name}
                           </TableCell>
-                          <TableCell className="text-right text-muted-foreground">
-                            {variant.initialPrice.toLocaleString()}
+                          <TableCell className="text-right font-medium">
+                            {product.initialPrice?.toLocaleString() || "0"}
                           </TableCell>
-                          <TableCell className="text-right text-muted-foreground">
-                            {variant.salePrice.toLocaleString()}
+                          <TableCell className="text-right font-medium">
+                            {product.salePrice?.toLocaleString() || "0"}
                           </TableCell>
-                          <TableCell className="text-right text-muted-foreground">
-                            {variant.quantity}
+                          <TableCell className="text-right font-medium">
+                            {product.quantity ?? 0}
                           </TableCell>
-
-                          {/* ACTION CHO HÀNG CON */}
                           <TableCell className="text-center">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -327,52 +327,139 @@ function ProductsList() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Hành động</DropdownMenuLabel>
                                 <DropdownMenuItem
-                                  onClick={() =>
-                                    console.log("Edit variant", variant.id)
-                                  }
+                                  onClick={() => console.log("Edit product", product.id)}
                                 >
-                                  <Edit className="mr-2 h-4 w-4" /> Sửa biến thể
+                                  <Edit className="mr-2 h-4 w-4" /> Chỉnh sửa hàng hóa
                                 </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => console.log("Add variant to", product.id)}
+                                >
+                                  <Plus className="mr-2 h-4 w-4" /> Thêm biến thể
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
                                 <DropdownMenuItem className="text-destructive">
-                                  <Trash2 className="mr-2 h-4 w-4" /> Xóa biến
-                                  thể
+                                  <Trash2 className="mr-2 h-4 w-4" /> Xóa hàng
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>
                         </TableRow>
-                      );
-                    })}
-                </React.Fragment>
-              );
-            })}
-          </TableBody>
-        </Table>
-        <Pagination>
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious href="#" />
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationLink href="#">1</PaginationLink>
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationLink href="#" isActive>
-                2
-              </PaginationLink>
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationLink href="#">3</PaginationLink>
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationEllipsis />
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationNext href="#" />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
+
+                        {/* Variant Rows */}
+                        {isExpanded &&
+                          product.variants?.map((variant: any) => {
+                            const isVariantSelected = selectedRows.includes(variant.id);
+                            return (
+                              <TableRow
+                                key={variant.id}
+                                data-state={isVariantSelected && "selected"}
+                              >
+                                <TableCell></TableCell>
+                                <TableCell className="pl-8">
+                                  <Checkbox
+                                    checked={isVariantSelected}
+                                    onCheckedChange={() => handleSelectRow(variant.id)}
+                                  />
+                                </TableCell>
+                                <TableCell className="text-muted-foreground text-sm">
+                                  {variant.id}
+                                </TableCell>
+                                <TableCell className="min-w-[300px] max-w-[300px] pl-8 text-sm italic text-muted-foreground line-clamp-2 break-words">
+                                  {variant.name}
+                                </TableCell>
+                                <TableCell className="text-right text-muted-foreground">
+                                  {variant.initialPrice?.toLocaleString() || "0"}
+                                </TableCell>
+                                <TableCell className="text-right text-muted-foreground">
+                                  {variant.salePrice?.toLocaleString() || "0"}
+                                </TableCell>
+                                <TableCell className="text-right text-muted-foreground">
+                                  {variant.quantity ?? 0}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" className="h-8 w-8 p-0">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem
+                                        onClick={() =>
+                                          console.log("Edit variant", variant.id)
+                                        }
+                                      >
+                                        <Edit className="mr-2 h-4 w-4" /> Sửa biến thể
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem className="text-destructive">
+                                        <Trash2 className="mr-2 h-4 w-4" /> Xóa biến thể
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                      </React.Fragment>
+                    );
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-6 text-gray-500">
+                      Không có sản phẩm nào
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+
+            {/* Pagination */}
+            <div className="flex items-center justify-between mt-6">
+              <div className="text-sm text-gray-600">
+                Hiển thị {products.length} / {totalItems} sản phẩm
+              </div>
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (currentPage > 1) handlePageChange(currentPage - 1);
+                      }}
+                    />
+                  </PaginationItem>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <PaginationItem key={page}>
+                      <PaginationLink
+                        href="#"
+                        isActive={page === currentPage}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handlePageChange(page);
+                        }}
+                      >
+                        {page}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (currentPage < totalPages) handlePageChange(currentPage + 1);
+                      }}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
