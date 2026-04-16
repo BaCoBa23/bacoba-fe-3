@@ -22,6 +22,7 @@ import {
   Plus,
   Trash2,
   Undo2,
+  Loader2,
 } from "lucide-react";
 import {
   Table,
@@ -31,8 +32,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import React, { useState } from "react";
-// Import từ file mock data của bạn
+import React, { useState, useEffect } from "react";
+// Import API service
+import {
+  getReceivedNotes,
+  type ReceivedNoteResponse,
+  type GetReceivedNotesParams,
+} from "@/services/api";
 import { MOCK_RECEIVED_NOTES } from "@/types/ReceivedNote";
 import {
   DropdownMenu,
@@ -56,21 +62,52 @@ function ReceivedNotesList() {
     { id: "cancelled", name: "Hủy" },
   ];
 
+  // State management
+  const [receivedNotes, setReceivedNotes] = useState<ReceivedNoteResponse[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
   const [selectedStatus, setSelectedStatus] = useState<Option[]>([]);
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Logic lọc dữ liệu dựa trên trạng thái và tìm kiếm
-  const filteredNotes = MOCK_RECEIVED_NOTES.filter((note) => {
-    const matchesStatus =
-      selectedStatus.length === 0 ||
-      selectedStatus.some((s) => s.id === note.status);
-    const matchesSearch = note.id
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
-    return matchesStatus && matchesSearch;
-  });
+  // Fetch received notes from API
+  useEffect(() => {
+    const fetchReceivedNotes = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const params: GetReceivedNotesParams = {
+          page: currentPage,
+          pageSize: pageSize,
+          search: searchQuery || undefined,
+          status:
+            selectedStatus.length > 0 ? selectedStatus[0].id : undefined,
+        };
+
+        const response = await getReceivedNotes(params);
+        if (response.success) {
+          setReceivedNotes(response.data);
+          setTotalPages(response.meta.totalPages);
+        } else {
+          setError(response.message || "Failed to fetch received notes");
+          setReceivedNotes(MOCK_RECEIVED_NOTES);
+        }
+      } catch (err) {
+        console.error("Error fetching received notes:", err);
+        setError("Error loading received notes");
+        // Fallback to MOCK data
+        setReceivedNotes(MOCK_RECEIVED_NOTES);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReceivedNotes();
+  }, [currentPage, pageSize, searchQuery, selectedStatus]);
 
   const toggleRowExpand = (id: string) => {
     setExpandedRows((prev) =>
@@ -110,6 +147,9 @@ function ReceivedNotesList() {
     }
   };
 
+  // Calculate pagination
+  const paginationLinks = Array.from({ length: totalPages }, (_, i) => i + 1);
+
   return (
     <div className="w-full h-full p-5 flex flex-wrap gap-y-6">
       <div className="basis-1/4 ">
@@ -148,323 +188,386 @@ function ReceivedNotesList() {
       </div>
 
       <div className="basis-3/4 min-h-[calc(100vh-200px)] flex flex-col justify-between">
-        <Table>
-          <TableHeader className="bg-muted">
-            <TableRow>
-              <TableHead className="w-[40px]"></TableHead>
-              <TableHead className="w-[50px]">
-                <Checkbox
-                  checked={
-                    filteredNotes.length > 0 &&
-                    filteredNotes.every((n) => selectedRows.includes(n.id))
-                  }
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      const allIds = filteredNotes.flatMap((n) => [
-                        n.id,
-                        ...(n.receivedProducts?.map((p) => p.id) || []),
-                      ]);
-                      setSelectedRows(
-                        Array.from(new Set([...selectedRows, ...allIds]))
-                      );
-                    } else {
-                      const currentIds = filteredNotes.flatMap((n) => [
-                        n.id,
-                        ...(n.receivedProducts?.map((p) => p.id) || []),
-                      ]);
-                      setSelectedRows(
-                        selectedRows.filter((id) => !currentIds.includes(id))
-                      );
-                    }
-                  }}
-                />
-              </TableHead>
-              <TableHead className="font-bold">Mã phiếu nhập</TableHead>
-              <TableHead className="font-bold">Thời gian</TableHead>
-              <TableHead className="text-right font-bold">
-                Nhà cung cấp
-              </TableHead>
-              <TableHead className="text-right font-bold">
-                Cần trả NCC
-              </TableHead>
-              <TableHead className="text-center font-bold">
-                Trạng thái
-              </TableHead>
-              <TableHead className="w-[50px]"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredNotes.map((note) => {
-              const productIds = note.receivedProducts?.map((p) => p.id) || [];
-              const isNoteSelected = selectedRows.includes(note.id);
-              const isExpanded = expandedRows.includes(note.id);
+        <div className="rounded-md border border-border overflow-hidden">
+          {/* Loading State */}
+          {loading && (
+            <div className="flex items-center justify-center p-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-muted-foreground">
+                Đang tải dữ liệu...
+              </span>
+            </div>
+          )}
 
-              return (
-                <React.Fragment key={note.id}>
-                  {/* --- HÀNG CHA: THÔNG TIN TÓM TẮT --- */}
-                  <TableRow
-                    data-state={isNoteSelected && "selected"}
-                    className={isExpanded ? "border-b-0 bg-blue-50/30" : ""}
-                  >
-                    <TableCell>
-                      <button
-                        onClick={() => toggleRowExpand(note.id)}
-                        className="p-1"
-                      >
-                        {isExpanded ? (
-                          <ChevronDown size={16} />
-                        ) : (
-                          <ChevronRight size={16} />
-                        )}
-                      </button>
-                    </TableCell>
-                    <TableCell>
-                      <Checkbox
-                        checked={isNoteSelected}
-                        onCheckedChange={() =>
-                          handleSelectRow(note.id, productIds)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell className="text-sm font-medium">
-                      {note.id}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {note.createdAt.toLocaleString("vi-VN")}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {note.provider?.name || "N/A"}
-                    </TableCell>
-                    <TableCell className="text-right font-bold">
-                      {(note.total - note.discount).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <span className={getStatusStyle(note.status)}>
-                        {statusOptions.find((o) => o.id === note.status)?.name}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => console.log("Edit", note.id)}
+          {/* Error State */}
+          {error && !loading && (
+            <div className="p-4 mb-4 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+              ⚠️ {error}
+            </div>
+          )}
+
+          {/* Table */}
+          {!loading && (
+            <Table>
+              <TableHeader className="bg-muted/50">
+                <TableRow>
+                  <TableHead className="w-8">
+                    <Checkbox
+                      checked={selectedRows.length > 0}
+                      onCheckedChange={() => {
+                        setSelectedRows(
+                          selectedRows.length > 0
+                            ? []
+                            : receivedNotes.map((n) => n.id)
+                        );
+                      }}
+                    />
+                  </TableHead>
+                  <TableHead></TableHead>
+                  <TableHead>Mã phiếu</TableHead>
+                  <TableHead>Thời gian</TableHead>
+                  <TableHead>NCC</TableHead>
+                  <TableHead className="text-right">Còn nợ (VND)</TableHead>
+                  <TableHead>Trạng thái</TableHead>
+                  <TableHead className="text-right">Thao tác</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {receivedNotes && receivedNotes.length > 0 ? (
+                  receivedNotes.map((note) => (
+                    <React.Fragment key={note.id}>
+                      <TableRow>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedRows.includes(note.id)}
+                            onCheckedChange={() =>
+                              handleSelectRow(
+                                note.id,
+                                note.receivedProducts?.map((p) => p.id) || []
+                              )
+                            }
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <button
+                            onClick={() => toggleRowExpand(note.id)}
+                            className="p-0"
                           >
-                            <Edit className="mr-2 h-4 w-4" /> Chỉnh sửa
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
+                            {expandedRows.includes(note.id) ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
+                          </button>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {note.id}
+                        </TableCell>
+                        <TableCell>
+                          {new Date(note.createdAt).toLocaleDateString(
+                            "vi-VN"
+                          )}
+                        </TableCell>
+                        <TableCell>{note.provider?.name || "---"}</TableCell>
+                        <TableCell className="text-right font-medium text-chart-2">
+                          {note.debtMoney?.toLocaleString() || "0"}
+                        </TableCell>
+                        <TableCell>
+                          <span className={getStatusStyle(note.status)}>
+                            {statusOptions.find((s) => s.id === note.status)
+                              ?.name || note.status}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Thao tác</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  console.log("Edit note:", note.id)
+                                }
+                              >
+                                <Edit3 className="mr-2 h-4 w-4" />
+                                Chỉnh sửa
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  console.log("Delete note:", note.id)
+                                }
+                                className="text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Xóa
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
 
-                  {/* --- HÀNG CHI TIẾT (ĐÃ CẬP NHẬT) --- */}
-                  {isExpanded && (
-                    <TableRow className="bg-muted/10 hover:bg-muted/20 border-b-0 border-l-2 border-chart-2">
-                      <TableCell colSpan={8} className="p-6">
-                        <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-top-2">
-                          {/* 1. Header chi tiết: ID và Trạng thái */}
-                          <div className="flex items-center gap-4 border-b border-border pb-4">
-                            <h3 className="text-xl font-bold text-foreground">
-                              {note.id}
-                            </h3>
-                            <span className={getStatusStyle(note.status)}>
-                              {
-                                statusOptions.find((o) => o.id === note.status)
-                                  ?.name
-                              }
-                            </span>
-                          </div>
+                      {/* Expanded Detail Row */}
+                      {expandedRows.includes(note.id) && (
+                        <TableRow className="bg-muted/20 hover:bg-muted/20">
+                          <TableCell colSpan={8} className="p-0">
+                            <div className="p-4">
+                              {/* 1. Thông tin chung */}
+                              <div className="grid grid-cols-4 gap-4 mb-4">
+                                <div>
+                                  <p className="text-xs text-muted-foreground">
+                                    Mã phiếu
+                                  </p>
+                                  <p className="font-semibold">{note.id}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground">
+                                    Ngày tạo
+                                  </p>
+                                  <p className="font-semibold">
+                                    {new Date(note.createdAt).toLocaleDateString(
+                                      "vi-VN",
+                                      {
+                                        year: "numeric",
+                                        month: "2-digit",
+                                        day: "2-digit",
+                                      }
+                                    )}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground">
+                                    NCC
+                                  </p>
+                                  <p className="font-semibold">
+                                    {note.provider?.name || "---"}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground">
+                                    SĐT
+                                  </p>
+                                  <p className="font-semibold">
+                                    {note.phoneNumber || "---"}
+                                  </p>
+                                </div>
+                              </div>
 
-                          {/* 2. Thông tin chung (Grid 2 cột) */}
-                          <div className="grid grid-cols-2 gap-x-20 gap-y-2 text-sm">
-                            <div className="flex justify-between border-b border-border py-1">
-                              <span className="text-muted-foreground">
-                                Ngày nhập:
-                              </span>
-                              <span className="text-foreground">
-                                {note.createdAt.toLocaleString("vi-VN")}
-                              </span>
-                            </div>
-                            <div className="flex justify-between border-b border-border py-1">
-                              <span className="text-muted-foreground">
-                                Tên NCC:
-                              </span>
-                              <span className="text-primary font-medium">
-                                {note.provider?.name}
-                              </span>
-                            </div>
-                          </div>
+                              {/* 2. Table sản phẩm nhập */}
+                              <div className="mt-4 rounded-md border-border overflow-hidden">
+                                <Table>
+                                  <TableHeader className="bg-muted/50">
+                                    <TableRow>
+                                      <TableHead>Mã hàng</TableHead>
+                                      <TableHead>Tên hàng</TableHead>
+                                      <TableHead className="text-right">
+                                        Số lượng
+                                      </TableHead>
+                                      <TableHead className="text-right">
+                                        Đơn giá
+                                      </TableHead>
+                                      <TableHead className="text-right">
+                                        Giá nhập
+                                      </TableHead>
+                                      <TableHead className="text-right">
+                                        Thành tiền
+                                      </TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {note.receivedProducts &&
+                                    note.receivedProducts.length > 0 ? (
+                                      note.receivedProducts.map((item) => {
+                                        const unitPrice =
+                                          item.addQuantity > 0
+                                            ? item.total / item.addQuantity
+                                            : 0;
+                                        return (
+                                          <TableRow
+                                            key={item.id}
+                                            className="hover:bg-transparent"
+                                          >
+                                            <TableCell className="text-chart-2 font-medium border-b-0">
+                                              {item.productId}
+                                            </TableCell>
+                                            <TableCell>
+                                              {item.productName}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                              {item.addQuantity}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                              {unitPrice.toLocaleString()}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                              {unitPrice.toLocaleString()}
+                                            </TableCell>
+                                            <TableCell className="text-right font-medium">
+                                              {item.total?.toLocaleString() ||
+                                                "0"}
+                                            </TableCell>
+                                          </TableRow>
+                                        );
+                                      })
+                                    ) : (
+                                      <TableRow>
+                                        <TableCell colSpan={6}>
+                                          Không có sản phẩm
+                                        </TableCell>
+                                      </TableRow>
+                                    )}
 
-                          {/* 3. Bảng danh sách sản phẩm nhập */}
-                          <div className="mt-4 rounded-md border-border overflow-hidden">
-                            <Table>
-                              <TableHeader className="bg-muted/50">
-                                <TableRow>
-                                  {/* Đã bỏ cột Checkbox ở đây */}
-                                  <TableHead>Mã hàng</TableHead>
-                                  <TableHead>Tên hàng</TableHead>
-                                  <TableHead className="text-right">
-                                    Số lượng
-                                  </TableHead>
-                                  <TableHead className="text-right">
-                                    Đơn giá
-                                  </TableHead>
-                                  <TableHead className="text-right">
-                                    Giá nhập
-                                  </TableHead>
-                                  <TableHead className="text-right">
-                                    Thành tiền
-                                  </TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {note.receivedProducts?.map((item) => {
-                                  const unitPrice =
-                                    item.addQuantity > 0
-                                      ? item.total / item.addQuantity
-                                      : 0;
-                                  return (
-                                    <TableRow
-                                      key={item.id}
-                                      className="hover:bg-transparent"
-                                    >
-                                      {/* Đã bỏ TableCell Checkbox ở đây */}
-                                      <TableCell className="text-chart-2 font-medium border-b-0">
-                                        {item.productId}
+                                    {/* Total Row */}
+                                    <TableRow className="bg-muted/20 font-medium border-b-0">
+                                      <TableCell colSpan={4}></TableCell>
+                                      <TableCell className="text-right text-muted-foreground">
+                                        Tổng tiền hàng:
                                       </TableCell>
-                                      <TableCell>{item.productName}</TableCell>
-                                      <TableCell className="text-right">
-                                        {item.addQuantity}
-                                      </TableCell>
-                                      <TableCell className="text-right">
-                                        {unitPrice.toLocaleString()}
-                                      </TableCell>
-                                      <TableCell className="text-right">
-                                        {unitPrice.toLocaleString()}
-                                      </TableCell>
-                                      <TableCell className="text-right font-medium">
-                                        {item.total.toLocaleString()}
+                                      <TableCell className="text-right font-bold text-lg">
+                                        {note.total?.toLocaleString() || "0"}
                                       </TableCell>
                                     </TableRow>
-                                  );
-                                })}
+                                    <TableRow className="hover:bg-transparent border-t-0 border-b-0">
+                                      <TableCell colSpan={4}></TableCell>
+                                      <TableCell className="text-right text-muted-foreground">
+                                        Giảm giá:
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                        -{note.discount?.toLocaleString() || "0"}
+                                      </TableCell>
+                                    </TableRow>
+                                    <TableRow className="hover:bg-transparent border-t-0 border-b-0">
+                                      <TableCell colSpan={4}></TableCell>
+                                      <TableCell className="text-right text-muted-foreground">
+                                        Đã trả NCC:
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                        {(
+                                          (note.total || 0) -
+                                          (note.discount || 0)
+                                        ).toLocaleString()}
+                                      </TableCell>
+                                    </TableRow>
+                                    <TableRow className="hover:bg-transparent border-t-0">
+                                      <TableCell colSpan={4}></TableCell>
+                                      <TableCell className="text-right font-bold">
+                                        Còn nợ NCC:
+                                      </TableCell>
+                                      <TableCell className="text-right font-bold text-chart-2">
+                                        {note.debtMoney?.toLocaleString() ||
+                                          "0"}
+                                      </TableCell>
+                                    </TableRow>
+                                  </TableBody>
+                                </Table>
+                              </div>
 
-                                {/* --- HÀNG TỔNG CỘNG MỚI THÊM --- */}
-                                <TableRow className="bg-muted/20 font-medium border-b-0">
-                                  <TableCell colSpan={4}></TableCell>
-                                  <TableCell className="text-right text-muted-foreground">
-                                    Tổng tiền hàng:
-                                  </TableCell>
-                                  <TableCell className="text-right font-bold text-lg">
-                                    {note.total.toLocaleString()}
-                                  </TableCell>
-                                </TableRow>
-                                <TableRow className="hover:bg-transparent border-t-0 border-b-0">
-                                  <TableCell colSpan={4}></TableCell>
-                                  <TableCell className="text-right text-muted-foreground">
-                                    Giảm giá:
-                                  </TableCell>
-                                  <TableCell className="text-right ">
-                                    -{note.discount.toLocaleString()}
-                                  </TableCell>
-                                </TableRow>
-                                <TableRow className="hover:bg-transparent border-t-0 border-b-0">
-                                  <TableCell colSpan={4}></TableCell>
-                                  <TableCell className="text-right text-muted-foreground">
-                                    Đã trả NCC:
-                                  </TableCell>
-                                  <TableCell className="text-right  ">
-                                    {(
-                                      note.total - note.discount
-                                    ).toLocaleString()}
-                                  </TableCell>
-                                </TableRow>
-                                <TableRow className="hover:bg-transparent border-t-0 ">
-                                  <TableCell colSpan={4}></TableCell>
-                                  <TableCell className="text-right font-bold">
-                                    Còn nợ NCC:
-                                  </TableCell>
-                                  <TableCell className="text-right font-bold text-chart-2 ">
-                                    {/* Logic nợ: Giả sử ở đây bạn trả hết, nếu có field paid thì note.total - discount - note.paid */}
-                                    0
-                                  </TableCell>
-                                </TableRow>
-                                {/* --- 4. HÀNG NÚT THAO TÁC MỚI THÊM --- */}
-                                <div className="flex justify-end items-center gap-3 mt-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="flex items-center gap-2"
-                                    onClick={() => {
-                                      /* Logic in mã vạch */
-                                    }}
-                                  >
-                                    <Barcode className="w-4 h-4" />
-                                    In mã vạch
-                                  </Button>
+                              {/* 3. Action Buttons */}
+                              <div className="flex justify-end items-center gap-3 mt-4">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex items-center gap-2"
+                                  onClick={() => {
+                                    console.log("Print barcode:", note.id);
+                                  }}
+                                >
+                                  <Barcode className="w-4 h-4" />
+                                  In mã vạch
+                                </Button>
 
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="flex items-center gap-2 text-destructive hover:text-destructive"
-                                    onClick={() => {
-                                      /* Logic trả hàng */
-                                    }}
-                                  >
-                                    <Undo2 className="w-4 h-4" />
-                                    Trả hàng
-                                  </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex items-center gap-2 text-destructive hover:text-destructive"
+                                  onClick={() => {
+                                    console.log("Return goods:", note.id);
+                                  }}
+                                >
+                                  <Undo2 className="w-4 h-4" />
+                                  Trả hàng
+                                </Button>
 
-                                  <Button
-                                    variant="default"
-                                    size="sm"
-                                    className="flex items-center gap-2 bg-chart-2 hover:bg-chart-2/90"
-                                    onClick={() => {
-                                      /* Logic chỉnh sửa */
-                                    }}
-                                  >
-                                    <Edit3 className="w-4 h-4" />
-                                    Chỉnh sửa
-                                  </Button>
-                                </div>
-                              </TableBody>
-                            </Table>
-                          </div>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </React.Fragment>
-              );
-            })}
-          </TableBody>
-        </Table>
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  className="flex items-center gap-2 bg-chart-2 hover:bg-chart-2/90"
+                                  onClick={() => {
+                                    console.log("Edit note:", note.id);
+                                  }}
+                                >
+                                  <Edit3 className="w-4 h-4" />
+                                  Chỉnh sửa
+                                </Button>
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8">
+                      Không có dữ liệu
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
+        </div>
 
-        <Pagination className="mt-4">
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious href="#" />
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationLink href="#" isActive>
-                1
-              </PaginationLink>
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationEllipsis />
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationNext href="#" />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
+        {/* Pagination */}
+        {!loading && receivedNotes.length > 0 && (
+          <Pagination className="mt-4">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setCurrentPage((p) => Math.max(1, p - 1));
+                  }}
+                />
+              </PaginationItem>
+
+              {paginationLinks.map((page) => (
+                <PaginationItem key={page}>
+                  <PaginationLink
+                    href="#"
+                    isActive={page === currentPage}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setCurrentPage(page);
+                    }}
+                  >
+                    {page}
+                  </PaginationLink>
+                </PaginationItem>
+              ))}
+
+              {totalPages > 5 && <PaginationEllipsis />}
+
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setCurrentPage((p) => Math.min(totalPages, p + 1));
+                  }}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        )}
       </div>
     </div>
   );
 }
 
 export default ReceivedNotesList;
+

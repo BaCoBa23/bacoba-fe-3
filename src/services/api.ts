@@ -392,4 +392,159 @@ export const deleteHistoryProvider = async (id: number) => {
   }
 };
 
+// ===== RECEIVED NOTES SERVICES =====
+export interface GetReceivedNotesParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  status?: string;
+  providerId?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface ReceivedProductResponse {
+  id: string;
+  productId: string;
+  productName: string;
+  addQuantity: number;
+  discount: number;
+  description?: string | null;
+  total: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReceivedNoteResponse {
+  id: string;
+  provider: ProviderResponse;
+  phoneNumber: string | null;
+  discount: number;
+  payedMoney: number;
+  debtMoney: number;
+  total: number;
+  description: string | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  receivedProducts: ReceivedProductResponse[];
+}
+
+export interface CreateReceivedNoteInput {
+  providerId: string;
+  phoneNumber?: string;
+  discount: number;
+  payedMoney: number;
+  status?: string;
+  description?: string;
+  receivedProducts: Array<{
+    productId: string;
+    addQuantity: number;
+    discount: number;
+    description?: string;
+  }>;
+}
+
+export interface UpdateReceivedNoteInput {
+  providerId?: string;
+  phoneNumber?: string;
+  discount?: number;
+  payedMoney?: number;
+  status?: string;
+  description?: string;
+  receivedProducts?: Array<{
+    productId: string;
+    addQuantity: number;
+    discount: number;
+    description?: string;
+  }>;
+}
+
+export interface ReceivedNotesApiResponse {
+  success: boolean;
+  message: string;
+  data: ReceivedNoteResponse[];
+  meta: {
+    totalItems: number;
+    currentPage: number;
+    pageSize: number;
+    totalPages: number;
+  };
+}
+
+export interface ReceivedNoteDetailResponse {
+  success: boolean;
+  message: string;
+  data: ReceivedNoteResponse;
+}
+
+// Get danh sách phiếu nhập
+export const getReceivedNotes = async (params?: GetReceivedNotesParams) => {
+  try {
+    const response = await apiClient.get<ReceivedNotesApiResponse>(
+      "/received-notes",
+      { params }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching received notes:", error);
+    throw error;
+  }
+};
+
+// Get chi tiết phiếu nhập
+export const getReceivedNoteById = async (id: string) => {
+  try {
+    const response = await apiClient.get<ReceivedNoteDetailResponse>(
+      `/received-notes/${id}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching received note ${id}:`, error);
+    throw error;
+  }
+};
+
+// Create phiếu nhập mới
+export const createReceivedNote = async (data: CreateReceivedNoteInput) => {
+  try {
+    const response = await apiClient.post<ReceivedNoteDetailResponse>(
+      "/received-notes",
+      data
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error creating received note:", error);
+    throw error;
+  }
+};
+
+// Update phiếu nhập
+export const updateReceivedNote = async (
+  id: string,
+  data: UpdateReceivedNoteInput
+) => {
+  try {
+    const response = await apiClient.put<ReceivedNoteDetailResponse>(
+      `/received-notes/${id}`,
+      data
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`Error updating received note ${id}:`, error);
+    throw error;
+  }
+};
+
+// Delete phiếu nhập
+export const deleteReceivedNote = async (id: string) => {
+  try {
+    const response = await apiClient.delete(`/received-notes/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error deleting received note ${id}:`, error);
+    throw error;
+  }
+};
+
 export default apiClient;
