@@ -63,8 +63,6 @@ export const MOCK_RECEIVED_NOTES: ReceivedNote[] = [
         addQuantity: 20,
         discount: 5000,
         total: 4900000,
-        createdAt: new Date("2024-04-10T08:00:00Z"),
-        updatedAt: new Date("2024-04-10T08:00:00Z"),
       },
       {
         id: "REC-002",
@@ -73,8 +71,6 @@ export const MOCK_RECEIVED_NOTES: ReceivedNote[] = [
         addQuantity: 15,
         discount: 0,
         total: 3750000,
-        createdAt: new Date("2024-04-10T08:30:00Z"),
-        updatedAt: new Date("2024-04-10T08:30:00Z"),
       }
     ],
   },
@@ -104,8 +100,6 @@ export const MOCK_RECEIVED_NOTES: ReceivedNote[] = [
         addQuantity: 50,
         discount: 2000,
         total: 4150000,
-        createdAt: new Date("2024-04-11T09:00:00Z"),
-        updatedAt: new Date("2024-04-11T09:00:00Z"),
       },
       {
         id: "REC-004",
@@ -114,8 +108,6 @@ export const MOCK_RECEIVED_NOTES: ReceivedNote[] = [
         addQuantity: 30,
         discount: 0,
         total: 2550000,
-        createdAt: new Date("2024-04-11T09:15:00Z"),
-        updatedAt: new Date("2024-04-11T09:15:00Z"),
       }
     ],
   },
@@ -144,8 +136,6 @@ export const MOCK_RECEIVED_NOTES: ReceivedNote[] = [
         addQuantity: 10,
         discount: 10000,
         total: 3100000,
-        createdAt: new Date("2024-04-12T14:00:00Z"),
-        updatedAt: new Date("2024-04-12T14:00:00Z"),
       },
       {
         id: "REC-006",
@@ -154,8 +144,6 @@ export const MOCK_RECEIVED_NOTES: ReceivedNote[] = [
         addQuantity: 25,
         discount: 0,
         total: 6250000,
-        createdAt: new Date("2024-04-12T15:00:00Z"),
-        updatedAt: new Date("2024-04-12T15:00:00Z"),
       },
       {
         id: "REC-007",
@@ -164,8 +152,6 @@ export const MOCK_RECEIVED_NOTES: ReceivedNote[] = [
         addQuantity: 40,
         discount: 1000,
         total: 3200000,
-        createdAt: new Date("2024-04-13T10:00:00Z"),
-        updatedAt: new Date("2024-04-13T10:00:00Z"),
       }
     ],
   },
@@ -194,8 +180,6 @@ export const MOCK_RECEIVED_NOTES: ReceivedNote[] = [
         addQuantity: 5,
         discount: 0,
         total: 1600000,
-        createdAt: new Date("2024-04-13T11:00:00Z"),
-        updatedAt: new Date("2024-04-13T11:00:00Z"),
       },
       {
         id: "REC-009",
@@ -204,8 +188,6 @@ export const MOCK_RECEIVED_NOTES: ReceivedNote[] = [
         addQuantity: 12,
         discount: 5000,
         total: 3780000,
-        createdAt: new Date("2024-04-14T16:30:00Z"),
-        updatedAt: new Date("2024-04-14T16:30:00Z"),
       },
       {
         id: "REC-010",
@@ -214,8 +196,6 @@ export const MOCK_RECEIVED_NOTES: ReceivedNote[] = [
         addQuantity: 10,
         discount: 0,
         total: 2500000,
-        createdAt: new Date("2024-04-15T09:00:00Z"),
-        updatedAt: new Date("2024-04-15T09:00:00Z"),
       }
     ],
   }

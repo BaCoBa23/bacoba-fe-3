@@ -224,12 +224,12 @@ function ReceivedNotesList() {
                     />
                   </TableHead>
                   <TableHead></TableHead>
-                  <TableHead>Mã phiếu</TableHead>
+                  <TableHead>Mã phiếu nhập</TableHead>
                   <TableHead>Thời gian</TableHead>
-                  <TableHead>NCC</TableHead>
-                  <TableHead className="text-right">Còn nợ (VND)</TableHead>
+                  <TableHead>Nhà Cung Cấp</TableHead>
+                  <TableHead className="text-right">Cần trả nợ NCC</TableHead>
                   <TableHead>Trạng thái</TableHead>
-                  <TableHead className="text-right">Thao tác</TableHead>
+                  
                 </TableRow>
               </TableHeader>
               <TableBody>
