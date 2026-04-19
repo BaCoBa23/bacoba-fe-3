@@ -12,15 +12,15 @@ import {
 } from "@/components/ui/pagination";
 
 import {
-  ArrowRight,
+  // ArrowRight,
   Barcode,
   ChevronDown,
   ChevronRight,
-  Edit,
-  Edit3,
-  MoreHorizontal,
-  Plus,
-  Trash2,
+  // Edit,
+  // Edit3,
+  // MoreHorizontal,
+  // Plus,
+  // Trash2,
   Undo2,
 } from "lucide-react";
 import {
@@ -34,15 +34,16 @@ import {
 import React, { useState } from "react";
 // Import từ file mock data của bạn
 import { MOCK_RECEIVED_NOTES } from "@/types/ReceivedNote";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+// import {
+//   DropdownMenu,
+//   DropdownMenuContent,
+//   DropdownMenuItem,
+//   DropdownMenuLabel,
+//   DropdownMenuSeparator,
+//   DropdownMenuTrigger,
+// } from "@/components/ui/dropdown-menu";
 import TagCombobox from "@/components/ui/TagCombobox";
+import { EditReceivedNote } from "@/components/products/EditReceivedNote";
 
 function ReceivedNotesList() {
   interface Option {
@@ -89,13 +90,13 @@ function ReceivedNotesList() {
     }
   };
 
-  const handleSelectSubItem = (itemId: string) => {
-    setSelectedRows((prev) =>
-      prev.includes(itemId)
-        ? prev.filter((id) => id !== itemId)
-        : [...prev, itemId]
-    );
-  };
+  // const handleSelectSubItem = (itemId: string) => {
+  //   setSelectedRows((prev) =>
+  //     prev.includes(itemId)
+  //       ? prev.filter((id) => id !== itemId)
+  //       : [...prev, itemId]
+  //   );
+  // };
 
   const getStatusStyle = (status: string) => {
     switch (status) {
@@ -127,9 +128,9 @@ function ReceivedNotesList() {
           />
         </div>
         <div className="basis-1/3 flex justify-around items-center">
-          <Button variant={"outline"}>
+          {/* <Button variant={"outline"}>
             Nhập hàng <ArrowRight className="ml-2 h-4 w-4" />{" "}
-          </Button>
+          </Button> */}
         </div>
       </div>
 
@@ -244,7 +245,7 @@ function ReceivedNotesList() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <DropdownMenu>
+                      {/* <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" className="h-8 w-8 p-0">
                             <MoreHorizontal className="h-4 w-4" />
@@ -257,7 +258,7 @@ function ReceivedNotesList() {
                             <Edit className="mr-2 h-4 w-4" /> Chỉnh sửa
                           </DropdownMenuItem>
                         </DropdownMenuContent>
-                      </DropdownMenu>
+                      </DropdownMenu> */}
                     </TableCell>
                   </TableRow>
 
@@ -419,17 +420,10 @@ function ReceivedNotesList() {
                                     Trả hàng
                                   </Button>
 
-                                  <Button
-                                    variant="default"
-                                    size="sm"
-                                    className="flex items-center gap-2 bg-chart-2 hover:bg-chart-2/90"
-                                    onClick={() => {
-                                      /* Logic chỉnh sửa */
-                                    }}
-                                  >
-                                    <Edit3 className="w-4 h-4" />
-                                    Chỉnh sửa
-                                  </Button>
+                                  
+                                  <EditReceivedNote
+                                    receivedNote={note}
+                                  />
                                 </div>
                               </TableBody>
                             </Table>
