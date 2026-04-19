@@ -104,7 +104,7 @@ function ProductsList() {
           page: currentPage,
           pageSize: pageSize,
           search: search || undefined,
-          status: "ACTIVE",
+          status: "active",
         };
 
         const response = await getProducts(params);

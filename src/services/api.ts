@@ -56,15 +56,31 @@ export interface GetProductsParams {
 export interface ProductResponse {
   id: string;
   name: string;
-  price: number;
+  parentId?: string | null;
+  productTypeId: number;
+  brandId: number;
+  initialPrice: number;
+  salePrice: number;
   quantity: number;
   description?: string;
   barcode?: string;
-  brandId?: number;
-  productTypeId?: number;
   status: string;
   createdAt: string;
   updatedAt: string;
+  brand: {
+    id: number;
+    name: string;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+  type: {
+    id: number;
+    name: string;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+  };
 }
 
 export interface ProductsApiResponse {
