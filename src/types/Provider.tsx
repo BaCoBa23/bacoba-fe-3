@@ -23,7 +23,7 @@ export type UpdateProviderInput = Partial<Omit<Provider, "id" | "createdAt" | "u
 export const MOCK_PROVIDERS: Provider[] = [
   {
     id: "PROV-001",
-    name: "Công ty Văn phòng phẩm Toàn Cầu",
+    name: "Công ty Quần",
     phoneNumber: "02838445566",
     email: "contact@toancau-stationery.com",
     debtTotal: 5000000,
@@ -36,7 +36,7 @@ export const MOCK_PROVIDERS: Provider[] = [
   },
   {
     id: "PROV-002",
-    name: "Nhà phân phối Linh kiện ABC",
+    name: "Công ty Áo",
     phoneNumber: "0909123456",
     email: null,
     debtTotal: 0,
@@ -47,12 +47,12 @@ export const MOCK_PROVIDERS: Provider[] = [
   },
   {
     id: "PROV-003",
-    name: "Xưởng May Mặc Việt Nam (Cũ)",
+    name: "Công ty Váy",
     phoneNumber: null,
     email: "support@xuongmayvn.vn",
     debtTotal: 1500000,
     total: 1500000,
-    status: "inactive",
+    status: "active",
     createdAt: new Date("2022-01-10T10:00:00Z"),
     updatedAt: new Date("2023-12-30T16:45:00Z"),
   }
