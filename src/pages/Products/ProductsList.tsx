@@ -2,7 +2,6 @@ import AddNewProduct from "@/components/products/AddNewProduct";
 import TagCombobox from "@/components/ui/TagCombobox";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-
 import { Input } from "@/components/ui/input";
 import {
   Pagination,
@@ -13,9 +12,8 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-
 import {
-  ArrowRight,
+  // ArrowRight,
   ChevronDown,
   ChevronRight,
   Edit,
@@ -33,7 +31,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
+import { MOCK_PRODUCTS } from "@/types/Product";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,469 +41,438 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { getProducts, deleteProduct, type ProductResponse, type GetProductsParams } from "@/services/api";
-import { MOCK_PRODUCTS } from "@/types/Product";
+
+// Import dữ liệu Mock
+import { MOCK_PRODUCT_TYPES } from "@/types/ProductType";
+import { mockAttributeTypes } from "@/types/AttributeType";
+import { mockAttributes } from "@/types/Attribute";
+// import { MOCK_PROVIDERS } from "@/types/Provider";
+import { AddNewReceivedNote } from "@/components/products/AddNewReceivedNote";
+import { ManageAttributeTypes } from "@/components/attibute-types/ManageAttributeTypes";
+import { ManageProductTypes } from "@/components/products/ManageProductTypes";
+
 
 function ProductsList() {
   interface Option {
     id: string;
     name: string;
   }
-  
-  // API Data States
-  const [products, setProducts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Pagination & Filter States
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
-  const [search, setSearch] = useState("");
-  
-  const [selectedTypes, setselectedTypes] = useState<Option[]>([]);
-  const [selectedSizes, setselectedSizes] = useState<Option[]>([]);
-  const [selectedColors, setselectedColors] = useState<Option[]>([]);
-  const [selectedProviders, setselectedProviders] = useState<Option[]>([]);
+
+  // --- Chuyển đổi dữ liệu sang Options cho Combobox ---
+  const productTypeOptions: Option[] = useMemo(
+    () => MOCK_PRODUCT_TYPES.map((t) => ({ id: t.id, name: t.name })),
+    []
+  );
+
+  // const providersOptions: Option[] = useMemo(
+  //   () => MOCK_PROVIDERS.map((p) => ({ id: p.id, name: p.name })),
+  //   []
+  // );
+
+  // --- Quản lý State ---
+  const [selectedProductTypes, setSelectedProductTypes] = useState<Option[]>(
+    []
+  );
+  // const [selectedProviders, setSelectedProviders] = useState<Option[]>([]);
+  const [selectedAttributes, setSelectedAttributes] = useState<
+    Record<string, Option[]>
+  >({});
 
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
-  const [selectedRows, setSelectedRows] = useState<string[]>([]);
 
-  // Mock options (sau này lấy từ API)
-  const typesOptions: Option[] = [
-    { id: "1", name: "Quần" },
-    { id: "2", name: "Áo" },
-    { id: "3", name: "Váy" },
-  ];
-  const corlorsOptions: Option[] = [
-    { id: "1", name: "Xanh" },
-    { id: "2", name: "Đỏ" },
-    { id: "3", name: "Hồng" },
-  ];
-  const sizesOptions: Option[] = [
-    { id: "1", name: "S" },
-    { id: "2", name: "M" },
-    { id: "3", name: "Xl" },
-  ];
-  const providersOptions: Option[] = [
-    { id: "1", name: "HAHAH" },
-    { id: "2", name: "OKOK" },
-    { id: "3", name: "LVLVLV" },
-  ];
+  // State lưu trữ danh sách các Object sản phẩm con (variants) được chọn
+  const [selectedVariants, setSelectedVariants] = useState<any[]>([]);
 
-  // Fetch products từ API
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const params: GetProductsParams = {
-          page: currentPage,
-          pageSize: pageSize,
-          search: search || undefined,
-          status: "active",
-        };
-
-        const response = await getProducts(params);
-        console.log("API Response:", response);
-        
-        // API trả về flat list (không có variants), tạm gán vào MOCK để có variants
-        // TODO: Khi backend trả variants, xóa MOCK_PRODUCTS
-        const productsWithVariants = response.data.map((product: any) => {
-          const mockProduct = MOCK_PRODUCTS.find(p => p.id === product.id);
-          return mockProduct || product;
-        });
-        
-        setProducts(productsWithVariants.length > 0 ? productsWithVariants : MOCK_PRODUCTS);
-        setTotalItems(response.meta.totalItems);
-        setTotalPages(response.meta.totalPages);
-        setCurrentPage(response.meta.currentPage);
-        
-      } catch (err: any) {
-        console.error("API Error:", err);
-        setError(err?.message || "Lỗi khi tải danh sách sản phẩm");
-        // Fallback to MOCK data khi lỗi
-        setProducts(MOCK_PRODUCTS);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProducts();
-  }, [currentPage, pageSize, search, selectedTypes]);
-
+  // --- Logic Xử lý ---
   const toggleRowExpand = (id: string) => {
     setExpandedRows((prev) =>
       prev.includes(id) ? prev.filter((rid) => rid !== id) : [...prev, id]
     );
   };
 
-  const handleSelectRow = (id: string) => {
-    setSelectedRows((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+  /**
+   * Xử lý khi click vào checkbox hàng cha
+   * Sẽ thêm hoặc xóa toàn bộ Object sản phẩm con của cha đó
+   */
+  const handleSelectRow = (variants: any[]) => {
+    const variantIds = variants.map((v) => v.id);
+    const allSelected = variantIds.every((id) =>
+      selectedVariants.some((sv) => sv.id === id)
+    );
+
+    if (allSelected) {
+      // Nếu tất cả con của cha này đã được chọn -> Xóa chúng khỏi danh sách
+      setSelectedVariants((prev) =>
+        prev.filter((sv) => !variantIds.includes(sv.id))
+      );
+    } else {
+      // Nếu chưa chọn hết -> Thêm những con chưa có vào danh sách (dưới dạng Object)
+      setSelectedVariants((prev) => {
+        const existingIds = prev.map((sv) => sv.id);
+        const newVariants = variants.filter((v) => !existingIds.includes(v.id));
+        return [...prev, ...newVariants];
+      });
+    }
+  };
+
+  /**
+   * Xử lý khi click vào checkbox hàng con (biến thể)
+   */
+  const handleSelectVariant = (variant: any) => {
+    setSelectedVariants((prev) =>
+      prev.some((sv) => sv.id === variant.id)
+        ? prev.filter((sv) => sv.id !== variant.id)
+        : [...prev, variant]
     );
   };
 
-  const handleSearchChange = (value: string) => {
-    setSearch(value);
-    setCurrentPage(1);
-  };
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
-  const handleDeleteProduct = async (productId: string) => {
-    if (!window.confirm(`Bạn chắc chắn muốn xóa sản phẩm ${productId}?`)) {
-      return;
-    }
-    try {
-      console.log("Deleting product:", productId);
-      const response = await deleteProduct(productId);
-      console.log("Delete success:", response);
-      // Reload danh sách sau khi xóa
-      setProducts(products.filter(p => p.id !== productId));
-      alert("Xóa sản phẩm thành công!");
-    } catch (err: any) {
-      console.error("Delete error full:", err);
-      const errorMsg = err?.response?.data?.message || err?.message || "Không biết lỗi gì";
-      alert(`Lỗi xóa sản phẩm: ${errorMsg}`);
-    }
-  };
-
-  const handleDeleteVariant = async (productId: string, variantId: string) => {
-    if (!window.confirm(`Bạn chắc chắn muốn xóa biến thể ${variantId}?`)) {
-      return;
-    }
-    try {
-      const updatedProducts = products.map(p => {
-        if (p.id === productId && p.variants) {
-          return {
-            ...p,
-            variants: p.variants.filter((v: any) => v.id !== variantId)
-          };
-        }
-        return p;
-      });
-      setProducts(updatedProducts);
-      alert("Xóa biến thể thành công!");
-    } catch (err: any) {
-      alert("Lỗi xóa biến thể: " + err.message);
-    }
-  };
-
   return (
-    <div className="w-full h-full p-5 flex flex-wrap gap-y-6">
-      <div className="basis-1/4 ">
+    <div className="w-full h-full p-5 flex flex-wrap gap-y-6 bg-background text-foreground">
+      {/* Tiêu đề & Thanh công cụ */}
+      <div className="basis-1/4">
         <div className="basis-full flex flex-wrap">
-          <p className="text-2xl font-bold">Hàng hóa</p>
+          <p className="text-2xl font-bold text-primary">Hàng hóa</p>
         </div>
       </div>
       <div className="basis-3/4 flex flex-wrap justify-between">
         <div className="basis-1/2">
-          <Input 
-            type="search" 
-            placeholder="Tìm theo mã, tên hàng hóa" 
-            value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
+          <Input
+            type="search"
+            placeholder="Tìm theo mã, tên hàng hóa"
+            className="focus-visible:ring-primary border-border"
           />
         </div>
-        <div className="basis-1/3 flex justify-around aglin-center ">
+        <div className="basis-1/3 flex justify-around items-center">
           <AddNewProduct />
-          <Button variant={"outline"}>Nhập hàng <ArrowRight/> </Button>
+          <AddNewReceivedNote selectedProducts={selectedVariants} />
+          
         </div>
       </div>
 
-      <div className="basis-1/4 w-full px-5 ">
-        <div className="basis-full w-full flex flex-wrap">
+      {/* Sidebar Bộ lọc */}
+      <div className="basis-1/4 w-full px-5 border-r border-border">
+        <div className="basis-full w-full flex flex-wrap gap-y-6">
           <div className="basis-full w-full">
-            <p className="basis-full text-sm font-bold py-3 ">Nhóm hàng</p>
+          <p className="basis-full text-sm font-bold py-3 text-foreground flex flex-wrap justify-between">
+              <span>Nhóm hàng</span>
+              <ManageProductTypes/>
+            </p>
             <TagCombobox
-              options={typesOptions}
-              selected={selectedTypes}
-              onChange={(val) => setselectedTypes(val)}
+              options={productTypeOptions}
+              selected={selectedProductTypes}
+              onChange={(val) => setSelectedProductTypes(val)}
               placeholder="Chọn nhóm hàng..."
             />
           </div>
-          <div className="basis-full w-full flex flex-wrap gap-y-2">
-            <p className="basis-full text-sm font-bold py-3 ">Thuộc tính</p>
-            <div className="basis-full w-full flex flex-wrap px-3">
-              <p className="basis-1/4 text-xs text-secondary py-3 ">Size</p>
-              <div className="basis-3/4 w-full ">
-                <TagCombobox
-                  options={sizesOptions}
-                  selected={selectedSizes}
-                  onChange={(val) => setselectedSizes(val)}
-                  placeholder="Chọn ..."
-                />
-              </div>
-            </div>
-            <div className="basis-full w-full flex flex-wrap px-3">
-              <p className="basis-1/4 text-xs text-secondary py-3 ">Màu</p>
-              <div className="basis-3/4 w-full ">
-                <TagCombobox
-                  options={corlorsOptions}
-                  selected={selectedColors}
-                  onChange={(val) => setselectedColors(val)}
-                  placeholder="Chọn ..."
-                />
-              </div>
-            </div>
-            <div className="basis-full w-full flex flex-wrap px-3">
-              <p className="basis-1/4 text-xs text-secondary py-3 ">
-                Tên thuộc tính
-              </p>
-              <div className="basis-3/4 w-full ">
-                <TagCombobox
-                  options={providersOptions}
-                  selected={selectedProviders}
-                  onChange={(val) => setselectedProviders(val)}
-                  placeholder="Chọn ..."
-                />
-              </div>
-            </div>
+
+          <div className="basis-full w-full flex flex-wrap gap-y-3">
+            <p className="basis-full text-sm font-bold py-3 text-foreground flex flex-wrap justify-between">
+              <span>Thuộc tính</span>
+              <ManageAttributeTypes/>
+            </p>
+            {mockAttributeTypes.map((type) => {
+              const optionsForType = mockAttributes
+                .filter((attr) => attr.attributeType?.id === type.id)
+                .map((attr) => ({ id: attr.id, name: attr.value }));
+
+              return (
+                <div
+                  key={type.id}
+                  className="basis-full w-full flex flex-wrap items-center px-2"
+                >
+                  <p className="basis-1/3 text-xs text-muted-foreground font-medium italic">
+                    {type.name}
+                  </p>
+                  <div className="basis-2/3 w-full">
+                    <TagCombobox
+                      options={optionsForType}
+                      selected={selectedAttributes[type.id] || []}
+                      onChange={(val) =>
+                        setSelectedAttributes((prev) => ({
+                          ...prev,
+                          [type.id]: val,
+                        }))
+                      }
+                      placeholder={`Chọn ${type.name.toLowerCase()}...`}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          <div className="basis-full w-full">
-            <p className="basis-full text-sm font-bold py-3 ">Nhà cung cấp</p>
-            <div className="basis-3/4 w-full ">
-              <TagCombobox
-                options={providersOptions}
-                selected={selectedProviders}
-                onChange={(val) => setselectedProviders(val)}
-                placeholder="Chọn nhà cung cấp"
-              />
-            </div>
-          </div>
+
+          {/* <div className="basis-full w-full">
+            <p className="text-sm font-bold py-3 text-foreground">
+              Nhà cung cấp
+            </p>
+            <TagCombobox
+              options={providersOptions}
+              selected={selectedProviders}
+              onChange={(val) => setSelectedProviders(val)}
+              placeholder="Chọn nhà cung cấp..."
+            />
+          </div> */}
         </div>
       </div>
-      <div className="basis-3/4 min-h-[calc(100vh-200px)] flex flex-col justify-between">
-        {/* Loading State */}
-        {loading && (
-          <div className="flex items-center justify-center py-12">
-            <Loader className="animate-spin mr-2" />
-            <p>Đang tải danh sách sản phẩm...</p>
-          </div>
-        )}
 
-        {/* Error State */}
-        {error && !loading && (
-          <div className="flex items-center gap-2 p-4 bg-red-50 border border-red-200 rounded text-red-700">
-            <AlertCircle size={20} />
-            <p>{error}</p>
-          </div>
-        )}
+      {/* Bảng dữ liệu */}
+      <div className="basis-3/4 min-h-[calc(100vh-200px)] flex flex-col justify-between pl-4">
+        <div className="rounded-md border border-border">
+          <Table>
+            <TableHeader className="bg-muted/50">
+              <TableRow className="border-border">
+                <TableHead className="w-[40px]"></TableHead>
+                <TableHead className="w-[50px]">
+                  <Checkbox
+                    checked={
+                      selectedVariants.length > 0 &&
+                      MOCK_PRODUCTS.every((p) =>
+                        p.variants.every((v: any) =>
+                          selectedVariants.some((sv) => sv.id === v.id)
+                        )
+                      )
+                    }
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        const allVariants = MOCK_PRODUCTS.flatMap(
+                          (p) => p.variants
+                        );
+                        setSelectedVariants(allVariants);
+                      } else {
+                        setSelectedVariants([]);
+                      }
+                    }}
+                    className="border-muted-foreground"
+                  />
+                </TableHead>
+                <TableHead className="font-bold text-foreground">
+                  Mã hàng
+                </TableHead>
+                <TableHead className="font-bold text-foreground">
+                  Tên hàng hóa
+                </TableHead>
+                <TableHead className="text-right font-bold text-foreground">
+                  Giá vốn
+                </TableHead>
+                <TableHead className="text-right font-bold text-foreground">
+                  Giá bán
+                </TableHead>
+                <TableHead className="text-right font-bold text-foreground">
+                  Số lượng
+                </TableHead>
+                <TableHead className="w-[60px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {MOCK_PRODUCTS.map((product) => {
+                const variantIds = product.variants.map((v: any) => v.id);
 
-        {/* Table */}
-        {!loading && !error && (
-          <>
-            <Table>
-              <TableHeader className="bg-muted">
-                <TableRow>
-                  <TableHead className="w-[40px]"></TableHead>
-                  <TableHead className="w-[50px]">
-                    <Checkbox disabled />
-                  </TableHead>
-                  <TableHead className="font-bold">Mã hàng</TableHead>
-                  <TableHead className="font-bold">Tên hàng hóa</TableHead>
-                  <TableHead className="text-right font-bold">Giá vốn</TableHead>
-                  <TableHead className="text-right font-bold">Giá bán</TableHead>
-                  <TableHead className="text-right font-bold">Số lượng</TableHead>
-                  <TableHead className="text-center"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {products.length > 0 ? (
-                  products.map((product) => {
-                    const isParentSelected = selectedRows.includes(product.id);
-                    const variantIds = product.variants?.map((v: any) => v.id) || [];
-                    const isExpanded = expandedRows.includes(product.id);
+                // Kiểm tra trạng thái checkbox của hàng cha dựa trên mảng Object
+                const isAllChildrenSelected = variantIds.every((id: any) =>
+                  selectedVariants.some((sv) => sv.id === id)
+                );
+                const isSomeChildrenSelected =
+                  variantIds.some((id: any) =>
+                    selectedVariants.some((sv) => sv.id === id)
+                  ) && !isAllChildrenSelected;
 
-                    return (
-                      <React.Fragment key={product.id}>
-                        {/* Parent Product Row */}
-                        <TableRow data-state={isParentSelected && "selected"}>
-                          <TableCell>
-                            <button
-                              onClick={() => toggleRowExpand(product.id)}
-                              className="p-1"
-                            >
-                              {isExpanded ? (
-                                <ChevronDown size={16} />
-                              ) : (
-                                <ChevronRight size={16} />
-                              )}
-                            </button>
-                          </TableCell>
-                          <TableCell>
-                            <Checkbox
-                              checked={isParentSelected}
-                              onCheckedChange={() => handleSelectRow(product.id)}
+                return (
+                  <React.Fragment key={product.id}>
+                    {/* HÀNG CHA */}
+                    <TableRow
+                      data-state={isAllChildrenSelected && "selected"}
+                      className="border-border hover:bg-muted/30"
+                    >
+                      <TableCell>
+                        <button
+                          onClick={() => toggleRowExpand(product.id)}
+                          className="p-1 hover:bg-muted rounded"
+                        >
+                          {expandedRows.includes(product.id) ? (
+                            <ChevronDown size={16} className="text-primary" />
+                          ) : (
+                            <ChevronRight
+                              size={16}
+                              className="text-muted-foreground"
                             />
-                          </TableCell>
-                          <TableCell className="text-sm font-medium">
-                            {product.id}
-                          </TableCell>
-                          <TableCell className="min-w-[300px] max-w-[300px] text-sm font-medium line-clamp-2 break-words">
-                            {product.name || product.type?.name || "---"}
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {product.initialPrice?.toLocaleString() || "0"}
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {product.salePrice?.toLocaleString() || "0"}
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {product.quantity ?? 0}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Hành động</DropdownMenuLabel>
-                                <DropdownMenuItem
-                                  onClick={() => console.log("Edit product", product.id)}
-                                >
-                                  <Edit className="mr-2 h-4 w-4" /> Chỉnh sửa hàng hóa
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => console.log("Add variant to", product.id)}
-                                >
-                                  <Plus className="mr-2 h-4 w-4" /> Thêm biến thể
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem 
-                                  className="text-destructive cursor-pointer"
-                                  onClick={() => handleDeleteProduct(product.id)}
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" /> Xóa hàng
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
+                          )}
+                        </button>
+                      </TableCell>
+                      <TableCell>
+                        <Checkbox
+                          checked={
+                            isAllChildrenSelected
+                              ? true
+                              : isSomeChildrenSelected
+                              ? "indeterminate"
+                              : false
+                          }
+                          onCheckedChange={() =>
+                            handleSelectRow(product.variants)
+                          }
+                        />
+                      </TableCell>
+                      <TableCell className="text-sm font-medium text-primary">
+                        {product.id}
+                      </TableCell>
+                      <TableCell className="min-w-[400px] max-w-[400px] text-sm font-medium whitespace-normal break-words">
+                        {product.name}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {product.initialPrice.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-primary">
+                        {product.salePrice.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right font-medium text-foreground">
+                        {product.quantity}
+                      </TableCell>
 
-                        {/* Variant Rows */}
-                        {isExpanded &&
-                          product.variants?.map((variant: any) => {
-                            const isVariantSelected = selectedRows.includes(variant.id);
-                            return (
-                              <TableRow
-                                key={variant.id}
-                                data-state={isVariantSelected && "selected"}
-                              >
-                                <TableCell></TableCell>
-                                <TableCell className="pl-8">
-                                  <Checkbox
-                                    checked={isVariantSelected}
-                                    onCheckedChange={() => handleSelectRow(variant.id)}
-                                  />
-                                </TableCell>
-                                <TableCell className="text-muted-foreground text-sm">
-                                  {variant.id}
-                                </TableCell>
-                                <TableCell className="min-w-[300px] max-w-[300px] pl-8 text-sm italic text-muted-foreground line-clamp-2 break-words">
-                                  {variant.name || "---"}
-                                </TableCell>
-                                <TableCell className="text-right text-muted-foreground">
-                                  {variant.initialPrice?.toLocaleString() || "0"}
-                                </TableCell>
-                                <TableCell className="text-right text-muted-foreground">
-                                  {variant.salePrice?.toLocaleString() || "0"}
-                                </TableCell>
-                                <TableCell className="text-right text-muted-foreground">
-                                  {variant.quantity ?? 0}
-                                </TableCell>
-                                <TableCell className="text-center">
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" className="h-8 w-8 p-0">
-                                        <MoreHorizontal className="h-4 w-4" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                      <DropdownMenuItem
-                                        onClick={() =>
-                                          console.log("Edit variant", variant.id)
-                                        }
-                                      >
-                                        <Edit className="mr-2 h-4 w-4" /> Sửa biến thể
-                                      </DropdownMenuItem>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem 
-                                        className="text-destructive cursor-pointer"
-                                        onClick={() => handleDeleteVariant(product.id, variant.id)}
-                                      >
-                                        <Trash2 className="mr-2 h-4 w-4" /> Xóa biến thể
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                      </React.Fragment>
-                    );
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-6 text-gray-500">
-                      Không có sản phẩm nào
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                      <TableCell className="text-center">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              className="h-8 w-8 p-0 hover:text-primary"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="end"
+                            className="border-border"
+                          >
+                            <DropdownMenuLabel className="text-muted-foreground">
+                              Hành động
+                            </DropdownMenuLabel>
+                            {/* <DropdownMenuItem
+                              onClick={() => console.log("Edit", product.id)}
+                            >
+                              <Edit className="mr-2 h-4 w-4" /> Chỉnh sửa hàng
+                              hóa
+                            </DropdownMenuItem> */}
+                            <DropdownMenuItem
+                              onClick={() =>
+                                console.log("Add variant", product.id)
+                              }
+                            >
+                              <Plus className="mr-2 h-4 w-4" /> Thêm biến thể
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-border" />
+                            <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                              <Trash2 className="mr-2 h-4 w-4" /> Xóa hàng
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
 
-            {/* Pagination */}
-            <div className="flex items-center justify-between mt-6">
-              <div className="text-sm text-gray-600">
-                Hiển thị {products.length} / {totalItems} sản phẩm
-              </div>
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (currentPage > 1) handlePageChange(currentPage - 1);
-                      }}
-                    />
-                  </PaginationItem>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <PaginationItem key={page}>
-                      <PaginationLink
-                        href="#"
-                        isActive={page === currentPage}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handlePageChange(page);
-                        }}
-                      >
-                        {page}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ))}
-                  <PaginationItem>
-                    <PaginationNext
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (currentPage < totalPages) handlePageChange(currentPage + 1);
-                      }}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            </div>
-          </>
-        )}
+                    {/* HÀNG CON (VARIANTS) */}
+                    {expandedRows.includes(product.id) &&
+                      product.variants.map((variant: any) => {
+                        const isVariantSelected = selectedVariants.some(
+                          (sv) => sv.id === variant.id
+                        );
+                        return (
+                          <TableRow
+                            key={variant.id}
+                            data-state={isVariantSelected && "selected"}
+                            className="bg-muted/10 border-border"
+                          >
+                            <TableCell></TableCell>
+                            <TableCell className="pl-8">
+                              <Checkbox
+                                checked={isVariantSelected}
+                                onCheckedChange={() =>
+                                  handleSelectVariant(variant)
+                                }
+                              />
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground">
+                              {variant.id}
+                            </TableCell>
+                            <TableCell className="pl-10 text-sm italic text-muted-foreground">
+                              {variant.name}
+                            </TableCell>
+                            <TableCell className="text-right text-xs text-muted-foreground italic">
+                              {variant.initialPrice.toLocaleString()}
+                            </TableCell>
+                            <TableCell className="text-right text-xs text-muted-foreground italic font-medium">
+                              {variant.salePrice.toLocaleString()}
+                            </TableCell>
+                            <TableCell className="text-right text-xs text-muted-foreground">
+                              {variant.quantity}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    className="h-8 w-8 p-0"
+                                  >
+                                    <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                  align="end"
+                                  className="border-border"
+                                >
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      console.log("Edit variant", variant.id)
+                                    }
+                                  >
+                                    <Edit className="mr-2 h-4 w-4" /> Sửa biến
+                                    thể
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                    <Trash2 className="mr-2 h-4 w-4" /> Xóa biến
+                                    thể
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                  </React.Fragment>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Phân trang */}
+        <div className="py-4">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  className="hover:bg-primary/10 hover:text-primary border-border"
+                />
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationLink
+                  href="#"
+                  isActive
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  1
+                </PaginationLink>
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationEllipsis className="text-muted-foreground" />
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  className="hover:bg-primary/10 hover:text-primary border-border"
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
       </div>
     </div>
   );

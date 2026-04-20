@@ -4,7 +4,7 @@ import {
   DialogClose,
   DialogContent,
   DialogDescription,
-  DialogFooter,
+  // DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -35,13 +35,12 @@ import {
   ShieldCheck,
   Info,
   Save,
-  Edit,
+  // Edit,
   Edit2,
   Loader2,
 } from "lucide-react";
 import { Input } from "../ui/input";
-import { Textarea } from "../ui/textarea";
-import { updateProvider } from "@/services/api";
+// import { Textarea } from "../ui/textarea";
 
 // Giả định cấu trúc Provider từ danh sách của bạn
 interface Provider {
@@ -63,10 +62,7 @@ interface EditProviderDialogProps {
   trigger?: React.ReactNode; // Cho phép tùy biến nút bấm mở dialog
 }
 
-function EditProviderDialog({ provider, trigger }: EditProviderDialogProps) {
-  const [open, setOpen] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
+function EditProviderDialog({ provider }: EditProviderDialogProps) {
   const FormSchema = z.object({
     name: z.string().min(1, "Tên nhà cung cấp là bắt buộc"),
     phoneNumber: z.string().optional().nullable(),
