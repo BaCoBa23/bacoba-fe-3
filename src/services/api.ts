@@ -79,4 +79,32 @@ export const getProducts = async (params?: GetProductsParams) => {
   }
 };
 
+export interface ProductAttribute {
+  id: string;
+  value: string;
+}
+
+export interface CreateProductParams {
+  name: string;
+  productTypeId: string;
+  brandId: string;
+  initialPrice: number;
+  salePrice: number;
+  description: string;
+  attributes: ProductAttribute[][]; 
+}
+
+
+export const createProduct = async (params?: CreateProductParams) => {
+  try {
+    const response = await apiClient.post<ProductsApiResponse>("/products", {
+      params,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    throw error;
+  }
+};
+
 export default apiClient;

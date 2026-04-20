@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Dialog,
   DialogClose,
@@ -42,30 +42,37 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import z from "zod";
 import { Button } from "../ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { Input } from "../ui/input";
+import { Textarea } from "../ui/textarea";
 import { mockAttributeTypes, mockAttributes, MOCK_PRODUCT_TYPES } from "@/types";
 import TagCombobox from "../ui/TagCombobox";
+import { createProduct, type CreateProductParams } from "@/services/api";
+import { toast } from "sonner";
 
-// Helper format số cho hiển thị và input
+
+// Helper format số cho hiển thị
 const formatNumber = (val: number | string) => {
   if (!val && val !== 0) return "";
   return new Intl.NumberFormat("vi-VN").format(Number(val));
 };
 
-// Helper parse string format về number để lưu vào form
+// Helper parse string format về number
 const parseFormattedNumber = (val: string) => {
   return Number(val.replace(/\./g, "").replace(/,/g, ""));
 };
 
 function AddNewProduct() {
+
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+
   const FormSchema = z.object({
-    id: z.string().optional(),
     name: z.string().min(1, "Tên hàng là bắt buộc"),
     productTypeId: z.string().min(1, "Vui lòng chọn nhóm hàng"),
-    brand: z.string().optional(),
     initialPrice: z.coerce.number().min(0, "Giá vốn không được âm"),
     salePrice: z.coerce.number().min(0, "Giá bán không được âm"),
+    description: z.string().optional(),
     attributes: z.array(
       z.object({
         typeId: z.string(),
@@ -94,9 +101,9 @@ function AddNewProduct() {
     defaultValues: {
       name: "",
       productTypeId: "",
-      brand: "",
       initialPrice: 0,
       salePrice: 0,
+      description: "",
       attributes: mockAttributeTypes.map((type) => ({
         typeId: type.id,
         typeName: type.name,
@@ -115,10 +122,7 @@ function AddNewProduct() {
   const watchInitialPrice = useWatch({ control: form.control, name: "initialPrice" });
   const watchSalePrice = useWatch({ control: form.control, name: "salePrice" });
 
-  // Kiểm tra xem có ít nhất 1 thuộc tính được chọn hay không
-  const isReadyToCreate = useMemo(() => {
-    return variantFields.length > 0;
-  }, [variantFields]);
+  const isReadyToCreate = useMemo(() => variantFields.length > 0, [variantFields]);
 
   // Logic tạo biến thể tự động
   useEffect(() => {
@@ -149,15 +153,53 @@ function AddNewProduct() {
     replaceVariants(newVariants);
   }, [watchAttributes, watchInitialPrice, watchSalePrice, replaceVariants]);
 
-  const onSubmit = (data: FormValues) => {
-    console.log("Dữ liệu gửi lên API:", data);
-    form.reset();
+  const onSubmit = async (data: FormValues) => {
+    try {
+      setLoading(true);
+
+      // Chuyển đổi dữ liệu attributes sang mảng 2 chiều ProductAttribute[][] cho API
+      const apiAttributes = data.attributes
+        .filter((attr) => attr.selectedValues.length > 0)
+        .map((attr) =>
+          attr.selectedValues.map((val) => ({
+            id: val.id,
+            value: val.name,
+          }))
+        );
+
+      const payload: CreateProductParams = {
+        name: data.name,
+        productTypeId: data.productTypeId,
+        brandId: "1", 
+        initialPrice: data.initialPrice,
+        salePrice: data.salePrice,
+        description: data.description || "",
+        attributes: apiAttributes,
+      };
+
+      await createProduct(payload);
+
+      toast.success("Tạo thành công",{
+        description: `Đã tạo sản phẩm ${data.name} với ${variantFields.length} biến thể.`
+      });
+
+
+      form.reset();
+      setOpen(false);
+    } catch (error) {
+
+      toast.error("Lỗi",{
+        description: `Không thể tạo sản phẩm. Vui lòng thử lại sau.`
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant={"ghost"} className="hover:bg-accent hover:text-accent-foreground">
+        <Button variant={"ghost"} className="hover:bg-accent hover:text-accent-foreground text-foreground">
           <Plus className="mr-2 h-4 w-4" /> Tạo mới
         </Button>
       </DialogTrigger>
@@ -167,7 +209,7 @@ function AddNewProduct() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full">
             <div className="p-6 pb-2">
               <DialogHeader>
-                <DialogTitle className="text-foreground">Thêm hàng hóa mới</DialogTitle>
+                <DialogTitle className="text-foreground text-xl">Thêm hàng hóa mới</DialogTitle>
                 <DialogDescription className="text-muted-foreground">
                   Nhập thông tin chi tiết. Hệ thống sẽ tự tạo các biến thể dựa trên thuộc tính bạn chọn.
                 </DialogDescription>
@@ -183,7 +225,7 @@ function AddNewProduct() {
                       Mã hàng
                     </FormLabel>
                     <FormControl>
-                      <Input placeholder="Mã tự động" disabled className="bg-muted text-muted-foreground border-border opacity-70" />
+                      <Input placeholder="Mã tự động" disabled className="bg-muted text-muted-foreground border-border" />
                     </FormControl>
                   </FormItem>
 
@@ -191,7 +233,7 @@ function AddNewProduct() {
                     control={form.control}
                     name="name"
                     render={({ field }) => (
-                      <FormItem className="col-span-2">
+                      <FormItem className="col-span-1">
                         <FormLabel className="text-foreground after:content-['*'] after:ml-0.5 after:text-destructive font-medium">
                           Tên hàng
                         </FormLabel>
@@ -207,7 +249,7 @@ function AddNewProduct() {
                     control={form.control}
                     name="productTypeId"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="col-span-1">
                         <FormLabel className="text-foreground font-medium">Nhóm hàng</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
@@ -229,21 +271,17 @@ function AddNewProduct() {
 
                   <FormField
                     control={form.control}
-                    name="brand"
+                    name="description"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-foreground font-medium">Thương hiệu</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="border-border focus:ring-primary">
-                              <SelectValue placeholder="Chọn thương hiệu" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="brand1">Local Brand</SelectItem>
-                            <SelectItem value="brand2">Global Brand</SelectItem>
-                          </SelectContent>
-                        </Select>
+                      <FormItem className="col-span-2">
+                        <FormLabel className="text-foreground font-medium">Mô tả</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Thông tin chi tiết về sản phẩm..." 
+                            className="border-border focus-visible:ring-primary resize-none" 
+                            {...field} 
+                          />
+                        </FormControl>
                       </FormItem>
                     )}
                   />
@@ -254,8 +292,8 @@ function AddNewProduct() {
                   <AccordionItem value="prices" className="border-none">
                     <AccordionTrigger className="hover:no-underline py-4 group">
                       <div className="flex flex-col items-start text-left">
-                        <span className="text-md font-bold text-foreground group-hover:text-primary transition-colors">Giá vốn, giá bán</span>
-                        <span className="text-xs text-muted-foreground font-normal">Thiết lập mức giá chung cho toàn bộ biến thể</span>
+                        <span className="text-md font-bold text-foreground group-hover:text-primary transition-colors">Giá vốn & Giá bán</span>
+                        <span className="text-xs text-muted-foreground font-normal">Thiết lập mức giá chung để áp dụng nhanh</span>
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="grid grid-cols-2 gap-4 pt-0 pb-4">
@@ -264,11 +302,11 @@ function AddNewProduct() {
                         name="initialPrice"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-foreground">Giá vốn</FormLabel>
+                            <FormLabel className="text-foreground">Giá vốn chung</FormLabel>
                             <FormControl>
                               <Input 
                                 type="text" 
-                                className="text-right border-border focus-visible:ring-primary" 
+                                className="text-right border-border focus-visible:ring-primary font-medium" 
                                 value={formatNumber(field.value)}
                                 onChange={(e) => field.onChange(parseFormattedNumber(e.target.value))}
                               />
@@ -281,11 +319,11 @@ function AddNewProduct() {
                         name="salePrice"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-foreground">Giá bán</FormLabel>
+                            <FormLabel className="text-foreground">Giá bán chung</FormLabel>
                             <FormControl>
                               <Input 
                                 type="text" 
-                                className="text-right border-border focus-visible:ring-primary" 
+                                className="text-right border-border focus-visible:ring-primary font-medium text-primary" 
                                 value={formatNumber(field.value)}
                                 onChange={(e) => field.onChange(parseFormattedNumber(e.target.value))}
                               />
@@ -302,13 +340,13 @@ function AddNewProduct() {
                   <AccordionItem value="attributes" className="border-none">
                     <AccordionTrigger className="hover:no-underline py-4 group">
                       <div className="flex flex-col items-start text-left">
-                        <span className="text-md font-bold text-foreground group-hover:text-primary transition-colors">Thuộc tính</span>
-                        <span className="text-xs text-muted-foreground font-normal">Chọn ít nhất một giá trị để tạo hàng hóa</span>
+                        <span className="text-md font-bold text-foreground group-hover:text-primary transition-colors">Thuộc tính (Phân loại)</span>
+                        <span className="text-xs text-muted-foreground font-normal">Chọn các giá trị để tạo ra các biến thể sản phẩm</span>
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="space-y-3">
                       {form.getValues("attributes").map((item, index) => (
-                        <div key={item.typeId} className="flex gap-4 items-center bg-accent/30 p-4 rounded-lg border border-border">
+                        <div key={item.typeId} className="flex gap-4 items-center bg-accent/20 p-4 rounded-lg border border-border">
                           <div className="w-1/4">
                             <span className="text-sm font-bold text-primary uppercase tracking-tight">
                               {item.typeName}
@@ -327,7 +365,7 @@ function AddNewProduct() {
                                   }
                                   selected={field.value || []}
                                   onChange={field.onChange}
-                                  placeholder={`Chọn giá trị cho ${item.typeName}...`}
+                                  placeholder={`Chọn ${item.typeName}...`}
                                 />
                               </div>
                             )}
@@ -343,26 +381,23 @@ function AddNewProduct() {
                   <div className="space-y-4 pt-4 border-t border-border">
                     <div className="flex justify-between items-end">
                       <div className="flex flex-col">
-                        <span className="text-md font-bold text-foreground uppercase tracking-wider">Hàng cùng loại</span>
-                        <span className="text-xs text-muted-foreground">Tự động tạo {variantFields.length} biến thể</span>
+                        <span className="text-md font-bold text-foreground uppercase tracking-wider">Danh sách biến thể</span>
+                        <span className="text-xs text-muted-foreground">Hệ thống tự động sinh {variantFields.length} mã hàng</span>
                       </div>
-                      {/* <Button variant="link" size="sm" className="text-primary hover:text-primary/80 text-xs font-semibold p-0 h-auto">
-                        Thiết lập giá đồng loạt
-                      </Button> */}
                     </div>
 
-                    <div className="border border-border rounded-lg overflow-hidden">
+                    <div className="border border-border rounded-lg overflow-hidden shadow-sm">
                       <Table>
-                        <TableHeader className="bg-muted">
+                        <TableHeader className="bg-muted/50">
                           <TableRow className="border-border hover:bg-transparent">
-                            <TableHead className="w-[350px] text-foreground font-bold">Biến thể</TableHead>
-                            <TableHead className="text-foreground font-bold text-right">Giá vốn</TableHead>
-                            <TableHead className="text-foreground font-bold text-right">Giá bán</TableHead>
+                            <TableHead className="w-[350px] text-foreground font-bold">Tên biến thể</TableHead>
+                            <TableHead className="text-foreground font-bold text-right">Giá vốn (đ)</TableHead>
+                            <TableHead className="text-foreground font-bold text-right">Giá bán (đ)</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {variantFields.map((v, vIndex) => (
-                            <TableRow key={v.id} className="border-border hover:bg-accent/10">
+                            <TableRow key={v.id} className="border-border hover:bg-accent/5 transition-colors">
                               <TableCell className="font-semibold text-primary py-3">
                                 {v.name}
                               </TableCell>
@@ -371,15 +406,12 @@ function AddNewProduct() {
                                   control={form.control}
                                   name={`variants.${vIndex}.initialPrice`}
                                   render={({ field }) => (
-                                    <div className="space-y-1">
-                                      <Input 
-                                        type="text" 
-                                        className="h-9 text-right border-border focus-visible:ring-primary" 
-                                        value={formatNumber(field.value)}
-                                        onChange={(e) => field.onChange(parseFormattedNumber(e.target.value))}
-                                      />
-                                      <p className="text-[10px] text-right text-muted-foreground">đ</p>
-                                    </div>
+                                    <Input 
+                                      type="text" 
+                                      className="h-9 text-right border-border focus-visible:ring-primary" 
+                                      value={formatNumber(field.value)}
+                                      onChange={(e) => field.onChange(parseFormattedNumber(e.target.value))}
+                                    />
                                   )}
                                 />
                               </TableCell>
@@ -388,15 +420,12 @@ function AddNewProduct() {
                                   control={form.control}
                                   name={`variants.${vIndex}.salePrice`}
                                   render={({ field }) => (
-                                    <div className="space-y-1">
-                                      <Input 
-                                        type="text" 
-                                        className="h-9 text-right border-border focus-visible:ring-primary" 
-                                        value={formatNumber(field.value)}
-                                        onChange={(e) => field.onChange(parseFormattedNumber(e.target.value))}
-                                      />
-                                      <p className="text-[10px] text-right text-muted-foreground">đ</p>
-                                    </div>
+                                    <Input 
+                                      type="text" 
+                                      className="h-9 text-right border-border focus-visible:ring-primary text-primary font-medium" 
+                                      value={formatNumber(field.value)}
+                                      onChange={(e) => field.onChange(parseFormattedNumber(e.target.value))}
+                                    />
                                   )}
                                 />
                               </TableCell>
@@ -411,18 +440,24 @@ function AddNewProduct() {
             </div>
 
             <div className="p-6 border-t border-border bg-background">
-              <DialogFooter className="gap-2 sm:gap-0">
+              <DialogFooter className="gap-2">
                 <DialogClose asChild>
-                  <Button variant="outline" type="button" className="border-border hover:bg-accent">Hủy</Button>
+                  <Button variant="outline" type="button" className="border-border hover:bg-accent text-foreground">Hủy bỏ</Button>
                 </DialogClose>
                 <Button 
                   type="submit" 
-                  disabled={!isReadyToCreate}
-                  className="bg-primary text-primary-foreground hover:bg-primary/90 min-w-[150px]"
+                  disabled={!isReadyToCreate || loading}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 min-w-[180px] font-bold"
                 >
-                  {isReadyToCreate 
-                    ? `Tạo ${variantFields.length} hàng hóa` 
-                    : "Tạo"}
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang xử lý...
+                    </>
+                  ) : isReadyToCreate ? (
+                    `Tạo ${variantFields.length} sản phẩm`
+                  ) : (
+                    "Vui lòng chọn thuộc tính"
+                  )}
                 </Button>
               </DialogFooter>
             </div>
