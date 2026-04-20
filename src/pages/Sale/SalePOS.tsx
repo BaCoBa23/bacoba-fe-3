@@ -23,11 +23,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { MOCK_PRODUCTS, type Bill, type Product } from "@/types";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 const MAX_BILLS = 10;
 const STORAGE_KEY = "temp_sales_pos_bills";

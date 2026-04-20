@@ -4,7 +4,6 @@ import { Route, Routes } from "react-router-dom";
 import ProductsList from "@/pages/Products/ProductsList";
 import ReceivedNotesList from "@/pages/ReceivedNote/ReceivedNotesList";
 import ProvidersList from "@/pages/Provider/ProvidersList";
-import SaleProcess from "@/pages/Sale/SaleProcess";
 import BillsList from "@/pages/Bill/BillsList";
 import SalePOS from "@/pages/Sale/SalePOS";
 
