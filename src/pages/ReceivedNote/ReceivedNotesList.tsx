@@ -12,15 +12,15 @@ import {
 } from "@/components/ui/pagination";
 
 import {
-  // ArrowRight,
+  ArrowRight,
   Barcode,
   ChevronDown,
   ChevronRight,
-  // Edit,
-  // Edit3,
-  // MoreHorizontal,
-  // Plus,
-  // Trash2,
+  Edit,
+  Edit3,
+  MoreHorizontal,
+  Plus,
+  Trash2,
   Undo2,
   Loader2,
 } from "lucide-react";
@@ -40,16 +40,15 @@ import {
   type GetReceivedNotesParams,
 } from "@/services/api";
 import { MOCK_RECEIVED_NOTES } from "@/types/ReceivedNote";
-// import {
-//   DropdownMenu,
-//   DropdownMenuContent,
-//   DropdownMenuItem,
-//   DropdownMenuLabel,
-//   DropdownMenuSeparator,
-//   DropdownMenuTrigger,
-// } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import TagCombobox from "@/components/ui/TagCombobox";
-import { EditReceivedNote } from "@/components/products/EditReceivedNote";
 
 function ReceivedNotesList() {
   interface Option {
@@ -127,13 +126,13 @@ function ReceivedNotesList() {
     }
   };
 
-  // const handleSelectSubItem = (itemId: string) => {
-  //   setSelectedRows((prev) =>
-  //     prev.includes(itemId)
-  //       ? prev.filter((id) => id !== itemId)
-  //       : [...prev, itemId]
-  //   );
-  // };
+  const handleSelectSubItem = (itemId: string) => {
+    setSelectedRows((prev) =>
+      prev.includes(itemId)
+        ? prev.filter((id) => id !== itemId)
+        : [...prev, itemId]
+    );
+  };
 
   const getStatusStyle = (status: string) => {
     switch (status) {
@@ -168,9 +167,9 @@ function ReceivedNotesList() {
           />
         </div>
         <div className="basis-1/3 flex justify-around items-center">
-          {/* <Button variant={"outline"}>
+          <Button variant={"outline"}>
             Nhập hàng <ArrowRight className="ml-2 h-4 w-4" />{" "}
-          </Button> */}
+          </Button>
         </div>
       </div>
 
@@ -189,118 +188,127 @@ function ReceivedNotesList() {
       </div>
 
       <div className="basis-3/4 min-h-[calc(100vh-200px)] flex flex-col justify-between">
-        <Table>
-          <TableHeader className="bg-muted">
-            <TableRow>
-              <TableHead className="w-[40px]"></TableHead>
-              <TableHead className="w-[50px]">
-                <Checkbox
-                  checked={
-                    filteredNotes.length > 0 &&
-                    filteredNotes.every((n) => selectedRows.includes(n.id))
-                  }
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      const allIds = filteredNotes.flatMap((n) => [
-                        n.id,
-                        ...(n.receivedProducts?.map((p) => p.id) || []),
-                      ]);
-                      setSelectedRows(
-                        Array.from(new Set([...selectedRows, ...allIds]))
-                      );
-                    } else {
-                      const currentIds = filteredNotes.flatMap((n) => [
-                        n.id,
-                        ...(n.receivedProducts?.map((p) => p.id) || []),
-                      ]);
-                      setSelectedRows(
-                        selectedRows.filter((id) => !currentIds.includes(id))
-                      );
-                    }
-                  }}
-                />
-              </TableHead>
-              <TableHead className="font-bold">Mã phiếu nhập</TableHead>
-              <TableHead className="font-bold">Thời gian</TableHead>
-              <TableHead className="text-right font-bold">
-                Nhà cung cấp
-              </TableHead>
-              <TableHead className="text-right font-bold">
-                Cần trả NCC
-              </TableHead>
-              <TableHead className="text-center font-bold">
-                Trạng thái
-              </TableHead>
-              <TableHead className="w-[50px]"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredNotes.map((note) => {
-              const productIds = note.receivedProducts?.map((p) => p.id) || [];
-              const isNoteSelected = selectedRows.includes(note.id);
-              const isExpanded = expandedRows.includes(note.id);
+        <div className="rounded-md border border-border overflow-hidden">
+          {/* Loading State */}
+          {loading && (
+            <div className="flex items-center justify-center p-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-muted-foreground">
+                Đang tải dữ liệu...
+              </span>
+            </div>
+          )}
 
-              return (
-                <React.Fragment key={note.id}>
-                  {/* --- HÀNG CHA: THÔNG TIN TÓM TẮT --- */}
-                  <TableRow
-                    data-state={isNoteSelected && "selected"}
-                    className={isExpanded ? "border-b-0 bg-blue-50/30" : ""}
-                  >
-                    <TableCell>
-                      <button
-                        onClick={() => toggleRowExpand(note.id)}
-                        className="p-1"
-                      >
-                        {isExpanded ? (
-                          <ChevronDown size={16} />
-                        ) : (
-                          <ChevronRight size={16} />
-                        )}
-                      </button>
-                    </TableCell>
-                    <TableCell>
-                      <Checkbox
-                        checked={isNoteSelected}
-                        onCheckedChange={() =>
-                          handleSelectRow(note.id, productIds)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell className="text-sm font-medium">
-                      {note.id}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {note.createdAt.toLocaleString("vi-VN")}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {note.provider?.name || "N/A"}
-                    </TableCell>
-                    <TableCell className="text-right font-bold">
-                      {(note.total - note.discount).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <span className={getStatusStyle(note.status)}>
-                        {statusOptions.find((o) => o.id === note.status)?.name}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {/* <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => console.log("Edit", note.id)}
+          {/* Error State */}
+          {error && !loading && (
+            <div className="p-4 mb-4 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+              ⚠️ {error}
+            </div>
+          )}
+
+          {/* Table */}
+          {!loading && (
+            <Table>
+              <TableHeader className="bg-muted/50">
+                <TableRow>
+                  <TableHead className="w-8">
+                    <Checkbox
+                      checked={selectedRows.length > 0}
+                      onCheckedChange={() => {
+                        setSelectedRows(
+                          selectedRows.length > 0
+                            ? []
+                            : receivedNotes.map((n) => n.id)
+                        );
+                      }}
+                    />
+                  </TableHead>
+                  <TableHead></TableHead>
+                  <TableHead>Mã phiếu nhập</TableHead>
+                  <TableHead>Thời gian</TableHead>
+                  <TableHead>Nhà Cung Cấp</TableHead>
+                  <TableHead className="text-right">Cần trả nợ NCC</TableHead>
+                  <TableHead>Trạng thái</TableHead>
+                  
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {receivedNotes && receivedNotes.length > 0 ? (
+                  receivedNotes.map((note) => (
+                    <React.Fragment key={note.id}>
+                      <TableRow>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedRows.includes(note.id)}
+                            onCheckedChange={() =>
+                              handleSelectRow(
+                                note.id,
+                                note.receivedProducts?.map((p) => p.id) || []
+                              )
+                            }
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <button
+                            onClick={() => toggleRowExpand(note.id)}
+                            className="p-0"
                           >
-                            <Edit className="mr-2 h-4 w-4" /> Chỉnh sửa
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu> */}
-                    </TableCell>
-                  </TableRow>
+                            {expandedRows.includes(note.id) ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
+                          </button>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {note.id}
+                        </TableCell>
+                        <TableCell>
+                          {new Date(note.createdAt).toLocaleDateString(
+                            "vi-VN"
+                          )}
+                        </TableCell>
+                        <TableCell>{note.provider?.name || "---"}</TableCell>
+                        <TableCell className="text-right font-medium text-chart-2">
+                          {note.debtMoney?.toLocaleString() || "0"}
+                        </TableCell>
+                        <TableCell>
+                          <span className={getStatusStyle(note.status)}>
+                            {statusOptions.find((s) => s.id === note.status)
+                              ?.name || note.status}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Thao tác</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  console.log("Edit note:", note.id)
+                                }
+                              >
+                                <Edit3 className="mr-2 h-4 w-4" />
+                                Chỉnh sửa
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  console.log("Delete note:", note.id)
+                                }
+                                className="text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Xóa
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
 
                       {/* Expanded Detail Row */}
                       {expandedRows.includes(note.id) && (
@@ -483,23 +491,35 @@ function ReceivedNotesList() {
                                   Trả hàng
                                 </Button>
 
-                                  
-                                  <EditReceivedNote
-                                    receivedNote={note}
-                                  />
-                                </div>
-                              </TableBody>
-                            </Table>
-                          </div>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </React.Fragment>
-              );
-            })}
-          </TableBody>
-        </Table>
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  className="flex items-center gap-2 bg-chart-2 hover:bg-chart-2/90"
+                                  onClick={() => {
+                                    console.log("Edit note:", note.id);
+                                  }}
+                                >
+                                  <Edit3 className="w-4 h-4" />
+                                  Chỉnh sửa
+                                </Button>
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8">
+                      Không có dữ liệu
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
+        </div>
 
         {/* Pagination */}
         {!loading && receivedNotes.length > 0 && (

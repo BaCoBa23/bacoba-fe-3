@@ -4,7 +4,6 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
-  CommandList, // Thêm CommandList để quản lý cuộn tốt hơn
 } from "@/components/ui/command";
 import {
   Popover,
@@ -12,7 +11,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-import { X, Plus } from "lucide-react"; // Thêm icon Plus
+import { X } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 
@@ -25,29 +24,25 @@ interface TagComboboxProps {
   options: Option[];
   selected: Option[];
   onChange: (value: Option[]) => void;
-  onAdd?: (inputValue: string) => void; // Function để add giá trị mới
-  showAddOption?: boolean; // Option để ẩn/hiện nút add
   placeholder?: string;
   label?: string;
 }
-
 export default function TagCombobox({
   label,
   options,
   selected,
   onChange,
-  onAdd,
-  showAddOption = true,
   placeholder = "Chọn...",
 }: TagComboboxProps) {
   const [open, setOpen] = useState(false);
-  const [inputValue, setInputValue] = useState(""); // State lưu giá trị input search
 
   const handleSelect = (item: Option) => {
     const isSelected = selected.some((s) => s.id === item.id);
     if (isSelected) {
+      // Nếu đã tồn tại id này thì xóa khỏi danh sách
       onChange(selected.filter((v) => v.id !== item.id));
     } else {
+      // Nếu chưa có thì thêm object mới vàos
       onChange([...selected, item]);
     }
   };
@@ -77,6 +72,7 @@ export default function TagCombobox({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
+                    // Lọc bỏ theo id khi nhấn dấu X
                     onChange(selected.filter((item) => item.id !== tag.id));
                   }}
                 >
@@ -91,43 +87,24 @@ export default function TagCombobox({
           align="start"
         >
           <Command>
-            <CommandInput
-              placeholder="Tìm..."
-              value={inputValue}
-              onValueChange={setInputValue}
-            />
-            <CommandList className="max-h-60 overflow-y-auto">
-              <CommandEmpty>Không có kết quả</CommandEmpty>
+            <CommandInput placeholder="Tìm..." />
+            <CommandEmpty>Không có kết quả</CommandEmpty>
+            <div className="max-h-60 overflow-y-auto">
               <CommandGroup>
                 {options.map((item) => (
                   <CommandItem
                     key={item.id}
+                    // Truyền name vào value để Command có thể search theo tên
                     value={item.name}
                     onSelect={() => handleSelect(item)}
                   >
+                    {/* Kiểm tra tích xanh dựa trên id */}
                     {selected.some((s) => s.id === item.id) ? "✔ " : ""}
                     {item.name}
                   </CommandItem>
                 ))}
-                {showAddOption && inputValue.trim() !== "" && (
-                <CommandItem>
-                  <button
-                    onClick={() => {
-                      onAdd?.(inputValue);
-                      setInputValue("");
-                    }}
-                    className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none cursor-pointer text-primary font-medium"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Thêm mới: "{inputValue}"
-                  </button>
-                </CommandItem>
-            )}
-
               </CommandGroup>
-            </CommandList>
-
-
+            </div>
           </Command>
         </PopoverContent>
       </Popover>

@@ -12,15 +12,17 @@ import {
 } from "@/components/ui/pagination";
 
 import {
-  // Barcode,
+  Barcode,
   ChevronDown,
   ChevronRight,
-  // Edit,
-  // Edit2,
+  Edit,
+  Edit2,
   History,
   MoreHorizontal,
-  // Plus,
-  // Wallet,
+  Plus,
+  Wallet,
+  AlertCircle,
+  Loader2,
 } from "lucide-react";
 import {
   Table,
