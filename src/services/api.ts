@@ -1,3 +1,4 @@
+import type { Product } from "@/types";
 import axios from "axios";
 import type { AxiosInstance, AxiosError } from "axios";
 
@@ -42,5 +43,40 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+export interface GetProductsParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  brandId?: number;
+  typeId?: number;
+  status?: string;
+  order?: Record<string, "asc" | "desc">;
+}
+
+
+export interface ProductsApiResponse {
+  success: boolean;
+  message: string;
+  data: Product[];
+  meta: {
+    totalItems: number;
+    currentPage: number;
+    pageSize: number;
+    totalPages: number;
+  };
+}
+
+export const getProducts = async (params?: GetProductsParams) => {
+  try {
+    const response = await apiClient.get<ProductsApiResponse>("/products", {
+      params,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    throw error;
+  }
+};
 
 export default apiClient;

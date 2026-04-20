@@ -29,8 +29,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import React, { useState, useMemo } from "react";
-import { MOCK_PRODUCTS } from "@/types/Product";
+import React, { useState, useMemo, useEffect } from "react";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,6 +48,7 @@ import { mockAttributes } from "@/types/Attribute";
 import { AddNewReceivedNote } from "@/components/products/AddNewReceivedNote";
 import { ManageAttributeTypes } from "@/components/attibute-types/ManageAttributeTypes";
 import { ManageProductTypes } from "@/components/products/ManageProductTypes";
+import { getProducts, type GetProductsParams } from "@/services/api";
 
 
 function ProductsList() {
@@ -55,6 +56,62 @@ function ProductsList() {
     id: string;
     name: string;
   }
+
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Pagination & Filter States
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [search, setSearch] = useState("");
+  
+  const [selectedTypes, setselectedTypes] = useState<Option[]>([]);
+  const [selectedSizes, setselectedSizes] = useState<Option[]>([]);
+  const [selectedColors, setselectedColors] = useState<Option[]>([]);
+  const [selectedProviders, setselectedProviders] = useState<Option[]>([]);
+
+  const [selectedRows, setSelectedRows] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const params: GetProductsParams = {
+          page: currentPage,
+          pageSize: pageSize,
+          search: search || undefined,
+          status: "active",
+        };
+
+        const response = await getProducts(params);
+        console.log("API Response:", response);
+        
+        // API trả về flat list (không có variants), tạm gán vào MOCK để có variants
+        // TODO: Khi backend trả variants, xóa products
+
+        
+        setProducts(response.data );
+        setTotalItems(response.meta.totalItems);
+        setTotalPages(response.meta.totalPages);
+        setCurrentPage(response.meta.currentPage);
+        
+      } catch (err: any) {
+        console.error("API Error:", err);
+        setError(err?.message || "Lỗi khi tải danh sách sản phẩm");
+
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, [currentPage, pageSize, search, selectedTypes]);
+
 
   // --- Chuyển đổi dữ liệu sang Options cho Combobox ---
   const productTypeOptions: Option[] = useMemo(
@@ -224,7 +281,7 @@ function ProductsList() {
                   <Checkbox
                     checked={
                       selectedVariants.length > 0 &&
-                      MOCK_PRODUCTS.every((p) =>
+                      products.every((p) =>
                         p.variants.every((v: any) =>
                           selectedVariants.some((sv) => sv.id === v.id)
                         )
@@ -232,7 +289,7 @@ function ProductsList() {
                     }
                     onCheckedChange={(checked) => {
                       if (checked) {
-                        const allVariants = MOCK_PRODUCTS.flatMap(
+                        const allVariants = products.flatMap(
                           (p) => p.variants
                         );
                         setSelectedVariants(allVariants);
@@ -262,7 +319,7 @@ function ProductsList() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {MOCK_PRODUCTS.map((product) => {
+              {products.map((product) => {
                 const variantIds = product.variants.map((v: any) => v.id);
 
                 // Kiểm tra trạng thái checkbox của hàng cha dựa trên mảng Object
