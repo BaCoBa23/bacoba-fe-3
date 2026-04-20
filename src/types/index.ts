@@ -21,4 +21,4 @@ export * from "./Provider";
 
 // Bill types
 export * from "./Bill";
-export * from "./BillProduct";
+// export * from "./BillProduct";
