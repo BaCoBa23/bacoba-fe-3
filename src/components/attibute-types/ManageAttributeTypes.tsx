@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,26 +19,72 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Settings2, Plus, Pencil, Check, X } from "lucide-react";
 import { mockAttributeTypes, type AttributeType } from "@/types";
+import { createAttributeType, createProductType, editAttributeType, getAttributeTypes } from "@/services/api";
+import { toast } from "sonner";
 
-export function ManageAttributeTypes() {
-  const [types, setTypes] = useState<AttributeType[]>(mockAttributeTypes);
+interface ManageAttributeTypesProps {
+  types: AttributeType[];
+  setTypes: React.Dispatch<React.SetStateAction<AttributeType[]>>;
+}
+
+export function ManageAttributeTypes({ types, setTypes }: ManageAttributeTypesProps) {
+  const [loading, setLoading] = useState(false);
   const [newTypeName, setNewTypeName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fetch dữ liệu từ API
+  const fetchTypes = async () => {
+    setLoading(true);
+    try {
+      const response = await getAttributeTypes();
+      if (response.success) {
+        setTypes(response.data);
+      }
+    } catch (error) {
+      console.error("Lỗi khi lấy danh sách loại thuộc tính:", error);
+      toast.error("Không thể tải danh sách loại thuộc tính");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Gọi fetch khi component mount (hoặc có thể fetch khi nhấn vào Trigger)
+  useEffect(() => {
+    fetchTypes();
+  }, []);
 
   // Thêm mới
-  const handleAdd = () => {
-    if (!newTypeName.trim()) return;
-    const newType: AttributeType = {
-      id: `type-${Date.now()}`,
-      name: newTypeName,
-      status: "ACTIVE",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    setTypes([...types, newType]);
-    setNewTypeName("");
+  const handleAdd = async () => {
+    const trimmedName = newTypeName.trim();
+    if (!trimmedName) return;
+
+    try {
+      const response = await createAttributeType({
+        name: trimmedName,
+      });
+
+      if (response) {
+        toast.success("Đã thêm nhóm hàng mới");
+
+        // Ép kiểu trực tiếp nếu bạn biết chắc chắn nó là 1 object đơn lẻ
+        const newData = response.data as unknown as AttributeType;
+
+        setTypes((prev) => [...prev, newData]);
+
+        // 4. Reset input
+        setNewTypeName("");
+      }
+    } catch (error) {
+      console.error("Add error:", error);
+      toast.error("Lỗi khi thêm nhóm hàng");
+    }
+    finally {
+      setLoading(false);
+    }
   };
+
 
   // Bắt đầu sửa
   const startEdit = (type: AttributeType) => {
@@ -47,13 +93,34 @@ export function ManageAttributeTypes() {
   };
 
   // Lưu sửa đổi
-  const handleUpdate = (id: string) => {
-    setTypes(
-      types.map((t) =>
-        t.id === id ? { ...t, name: editName, updatedAt: new Date() } : t
-      )
-    );
-    setEditingId(null);
+  const handleUpdate = async (id: string) => {
+    if (!editName.trim()) return;
+  
+    try {
+      const response = await editAttributeType(id, { name: editName });
+  
+      if (response) {
+        toast.success("Cập nhật thành công");
+        
+        // Extract the updated object from the response
+        const updatedItem = response.data as unknown as AttributeType;
+  
+        // 1. Update the list: Replace the old item with the updated one
+        setTypes((prev) => 
+          prev.map((item) => (item.id === id ? updatedItem : item))
+        );
+  
+        // 2. Reset UI state
+        setEditingId(null);
+        setEditName(""); // Ensure you are clearing the correct state variable
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Lỗi khi cập nhật");
+    }
+    finally {
+      setLoading(false);
+    }
   };
 
   // Xóa

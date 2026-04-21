@@ -41,15 +41,20 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 // Import dữ liệu Mock
-import { MOCK_PRODUCT_TYPES } from "@/types/ProductType";
 import { mockAttributeTypes } from "@/types/AttributeType";
 import { mockAttributes } from "@/types/Attribute";
 // import { MOCK_PROVIDERS } from "@/types/Provider";
 import { AddNewReceivedNote } from "@/components/products/AddNewReceivedNote";
 import { ManageAttributeTypes } from "@/components/attibute-types/ManageAttributeTypes";
 import { ManageProductTypes } from "@/components/products/ManageProductTypes";
-import { getProducts, type GetProductsParams } from "@/services/api";
-
+import {
+  getAttributeTypes,
+  getAttributes,
+  getProductTypes,
+  getProducts,
+  type GetProductsParams,
+} from "@/services/api";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function ProductsList() {
   interface Option {
@@ -58,16 +63,19 @@ function ProductsList() {
   }
 
   const [products, setProducts] = useState<any[]>([]);
+  const [productTypes, setProductTypes] = useState<any[]>([]); // Thêm dòng này
+  const [attributeTypes, setAttributeTypes] = useState<any[]>([]); // New state
+  const [attributes, setAttributes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Pagination & Filter States
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [search, setSearch] = useState("");
-  
+
   const [selectedTypes, setselectedTypes] = useState<Option[]>([]);
   const [selectedSizes, setselectedSizes] = useState<Option[]>([]);
   const [selectedColors, setselectedColors] = useState<Option[]>([]);
@@ -75,48 +83,63 @@ function ProductsList() {
 
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
 
+
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchProductsData = async () => {
+      setLoading(true);
       try {
-        setLoading(true);
-        setError(null);
-        
-        const params: GetProductsParams = {
+        const res = await getProducts({
           page: currentPage,
           pageSize: pageSize,
           search: search || undefined,
           status: "active",
-        };
-
-        const response = await getProducts(params);
-        console.log("API Response:", response);
-        
-        // API trả về flat list (không có variants), tạm gán vào MOCK để có variants
-        // TODO: Khi backend trả variants, xóa products
-
-        
-        setProducts(response.data );
-        setTotalItems(response.meta.totalItems);
-        setTotalPages(response.meta.totalPages);
-        setCurrentPage(response.meta.currentPage);
-        
+        });
+        setProducts(res.data);
+        setTotalItems(res.meta.totalItems);
+        setTotalPages(res.meta.totalPages);
       } catch (err: any) {
-        console.error("API Error:", err);
-        setError(err?.message || "Lỗi khi tải danh sách sản phẩm");
-
+        setError(err?.message || "Lỗi tải sản phẩm");
       } finally {
         setLoading(false);
       }
     };
-
-    fetchProducts();
+    fetchProductsData();
   }, [currentPage, pageSize, search, selectedTypes]);
 
 
+  useEffect(() => {
+    const fetchStaticMetadata = async () => {
+      try {
+        const [typesRes, attrTypesRes] = await Promise.all([
+          getProductTypes(),
+          getAttributeTypes(),
+        ]);
+        if (typesRes.success) setProductTypes(typesRes.data);
+        if (attrTypesRes.success) setAttributeTypes(attrTypesRes.data);
+      } catch (err) {
+        console.error("Lỗi tải Metadata:", err);
+      }
+    };
+    fetchStaticMetadata();
+  }, [productTypes,attributeTypes]);
+
+
+  useEffect(() => {
+    const fetchAttributesData = async () => {
+      try {
+        const res = await getAttributes();
+        if (res.success) setAttributes(res.data);
+      } catch (err) {
+        console.error("Lỗi tải danh sách giá trị thuộc tính:", err);
+      }
+    };
+    fetchAttributesData();
+  }, [attributes]);
+
   // --- Chuyển đổi dữ liệu sang Options cho Combobox ---
   const productTypeOptions: Option[] = useMemo(
-    () => MOCK_PRODUCT_TYPES.map((t) => ({ id: t.id, name: t.name })),
-    []
+    () => productTypes.map((t) => ({ id: t.id, name: t.name })),
+    [productTypes] // Dependency là state productTypes
   );
 
   // const providersOptions: Option[] = useMemo(
@@ -181,6 +204,123 @@ function ProductsList() {
     );
   };
 
+  if (loading)
+    return (
+      <div className="w-full h-full p-5 flex flex-wrap gap-y-6 bg-background">
+        {/* Tiêu đề & Thanh công cụ Skeleton */}
+        <div className="basis-1/4">
+          <Skeleton className="h-8 w-32" />
+        </div>
+        <div className="basis-3/4 flex flex-wrap justify-between">
+          <div className="basis-1/2">
+            <Skeleton className="h-10 w-full" />
+          </div>
+          <div className="basis-1/3 flex justify-around items-center">
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-32" />
+          </div>
+        </div>
+
+        {/* Sidebar Bộ lọc Skeleton */}
+        <div className="basis-1/4 w-full px-5 border-r border-border">
+          <div className="flex flex-col gap-y-8">
+            {/* Nhóm hàng */}
+            <div>
+              <div className="flex justify-between mb-3">
+                <Skeleton className="h-5 w-20" />
+                <Skeleton className="h-5 w-5 rounded-full" />
+              </div>
+              <Skeleton className="h-10 w-full" />
+            </div>
+
+            {/* Thuộc tính */}
+            <div className="flex flex-col gap-y-4">
+              <div className="flex justify-between mb-1">
+                <Skeleton className="h-5 w-20" />
+                <Skeleton className="h-5 w-5 rounded-full" />
+              </div>
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-x-2">
+                  <Skeleton className="h-4 basis-1/3" />
+                  <Skeleton className="h-9 basis-2/3" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Bảng dữ liệu Skeleton */}
+        <div className="basis-3/4 min-h-[calc(100vh-200px)] flex flex-col pl-4">
+          <div className="rounded-md border border-border">
+            <Table>
+              <TableHeader className="bg-muted/50">
+                <TableRow>
+                  <TableHead className="w-[40px]"></TableHead>
+                  <TableHead className="w-[50px]">
+                    <Skeleton className="h-4 w-4" />
+                  </TableHead>
+                  <TableHead>
+                    <Skeleton className="h-4 w-20" />
+                  </TableHead>
+                  <TableHead>
+                    <Skeleton className="h-4 w-40" />
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <Skeleton className="h-4 w-16 ml-auto" />
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <Skeleton className="h-4 w-16 ml-auto" />
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <Skeleton className="h-4 w-12 ml-auto" />
+                  </TableHead>
+                  <TableHead className="w-[60px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[1, 2, 3, 4, 5].map((row) => (
+                  <TableRow key={row} className="border-border">
+                    <TableCell>
+                      <Skeleton className="h-4 w-4" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-4" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-16" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-64" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-16 ml-auto" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-16 ml-auto" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-10 ml-auto" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-8 w-8 rounded-full ml-auto" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Phân trang Skeleton */}
+          <div className="py-6 flex justify-center gap-2">
+            <Skeleton className="h-10 w-10" />
+            <Skeleton className="h-10 w-10" />
+            <Skeleton className="h-10 w-10" />
+            <Skeleton className="h-10 w-10" />
+          </div>
+        </div>
+      </div>
+    );
+
   return (
     <div className="w-full h-full p-5 flex flex-wrap gap-y-6 bg-background text-foreground">
       {/* Tiêu đề & Thanh công cụ */}
@@ -198,9 +338,15 @@ function ProductsList() {
           />
         </div>
         <div className="basis-1/3 flex justify-around items-center">
-          <AddNewProduct />
+          <AddNewProduct
+            attributes={attributes}
+            setAttributes={setAttributes}
+            attributeTypes={attributeTypes}
+            setAttributeTypes={setAttributeTypes}
+            productTypes={productTypes}
+            setProductTypes={setProductTypes}
+          />
           <AddNewReceivedNote selectedProducts={selectedVariants} />
-          
         </div>
       </div>
 
@@ -208,9 +354,9 @@ function ProductsList() {
       <div className="basis-1/4 w-full px-5 border-r border-border">
         <div className="basis-full w-full flex flex-wrap gap-y-6">
           <div className="basis-full w-full">
-          <p className="basis-full text-sm font-bold py-3 text-foreground flex flex-wrap justify-between">
+            <p className="basis-full text-sm font-bold py-3 text-foreground flex flex-wrap justify-between">
               <span>Nhóm hàng</span>
-              <ManageProductTypes/>
+              <ManageProductTypes />
             </p>
             <TagCombobox
               options={productTypeOptions}
@@ -223,12 +369,26 @@ function ProductsList() {
           <div className="basis-full w-full flex flex-wrap gap-y-3">
             <p className="basis-full text-sm font-bold py-3 text-foreground flex flex-wrap justify-between">
               <span>Thuộc tính</span>
-              <ManageAttributeTypes/>
+              <ManageAttributeTypes
+                types={attributeTypes}
+                setTypes={setAttributeTypes}
+              />
             </p>
-            {mockAttributeTypes.map((type) => {
-              const optionsForType = mockAttributes
-                .filter((attr) => attr.attributeType?.id === type.id)
+
+            {/* Sử dụng dữ liệu từ State thay vì Mock */}
+            {attributeTypes.map((type) => {
+              const optionsForType = attributes
+                .filter((attr) => {
+                  // Kiểm tra ID loại thuộc tính (Lưu ý: tùy vào cấu trúc API trả về là object hay string)
+                  const typeId =
+                    typeof attr.attributeType === "object"
+                      ? attr.attributeType?.id
+                      : attr.attributeTypeId;
+                  return typeId === type.id;
+                })
                 .map((attr) => ({ id: attr.id, name: attr.value }));
+
+              
 
               return (
                 <div
@@ -289,9 +449,7 @@ function ProductsList() {
                     }
                     onCheckedChange={(checked) => {
                       if (checked) {
-                        const allVariants = products.flatMap(
-                          (p) => p.variants
-                        );
+                        const allVariants = products.flatMap((p) => p.variants);
                         setSelectedVariants(allVariants);
                       } else {
                         setSelectedVariants([]);
@@ -380,7 +538,15 @@ function ProductsList() {
                         {product.salePrice.toLocaleString()}
                       </TableCell>
                       <TableCell className="text-right font-medium text-foreground">
-                        {product.quantity}
+                        {
+                          product.variants && product.variants.length > 0
+                            ? product.variants.reduce(
+                                (sum: number, v: any) =>
+                                  sum + (v.quantity || 0),
+                                0
+                              )
+                            : product.quantity // Nếu không có variants thì giữ nguyên số lượng gốc
+                        }
                       </TableCell>
 
                       <TableCell className="text-center">

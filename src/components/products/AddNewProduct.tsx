@@ -45,11 +45,17 @@ import { Button } from "../ui/button";
 import { Plus, Loader2 } from "lucide-react";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
-import { mockAttributeTypes, mockAttributes, MOCK_PRODUCT_TYPES } from "@/types";
+import {
+  // mockAttributeTypes,
+  // mockAttributes,
+  // MOCK_PRODUCT_TYPES,
+  type AttributeType,
+  type ProductType,
+  type Attribute,
+} from "@/types";
 import TagCombobox from "../ui/TagCombobox";
 import { createProduct, type CreateProductParams } from "@/services/api";
 import { toast } from "sonner";
-
 
 // Helper format số cho hiển thị
 const formatNumber = (val: number | string) => {
@@ -62,8 +68,23 @@ const parseFormattedNumber = (val: string) => {
   return Number(val.replace(/\./g, "").replace(/,/g, ""));
 };
 
-function AddNewProduct() {
+interface ManageAttributeTypesProps {
+  attributeTypes: AttributeType[];
+  setAttributeTypes: React.Dispatch<React.SetStateAction<AttributeType[]>>;
+  productTypes: ProductType[];
+  setProductTypes: React.Dispatch<React.SetStateAction<AttributeType[]>>;
+  attributes: Attribute[];
+  setAttributes: React.Dispatch<React.SetStateAction<AttributeType[]>>;
+}
 
+function AddNewProduct({
+  attributeTypes,
+  setAttributeTypes,
+  productTypes,
+  setProductTypes,
+  attributes,
+  setAttributes,
+}: ManageAttributeTypesProps) {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -73,13 +94,14 @@ function AddNewProduct() {
     initialPrice: z.coerce.number().min(0, "Giá vốn không được âm"),
     salePrice: z.coerce.number().min(0, "Giá bán không được âm"),
     description: z.string().optional(),
+    // Sửa đoạn này trong FormSchema
     attributes: z.array(
       z.object({
-        typeId: z.string(),
+        typeId: z.coerce.string(), // Thêm .coerce ở đây
         typeName: z.string(),
         selectedValues: z.array(
           z.object({
-            id: z.string(),
+            id: z.coerce.string(), // Nên làm tương tự với id của value
             name: z.string(),
           })
         ),
@@ -104,37 +126,79 @@ function AddNewProduct() {
       initialPrice: 0,
       salePrice: 0,
       description: "",
-      attributes: mockAttributeTypes.map((type) => ({
-        typeId: type.id,
+      attributes: attributeTypes.map((type) => ({
+        typeId: String(type.id), // Ép kiểu sang String ở đây
         typeName: type.name,
         selectedValues: [],
       })),
       variants: [],
     },
   });
+  // Sửa useEffect khởi tạo
+  const { fields: attributeFields, replace: replaceAttributes } = useFieldArray(
+    {
+      control: form.control,
+      name: "attributes",
+    }
+  );
+  useEffect(() => {
+    if (attributeTypes && attributeTypes.length > 0) {
+      const newAttributes = attributeTypes.map((type) => ({
+        typeId: String(type.id),
+        typeName: type.name,
+        selectedValues: [],
+      }));
+
+      // Chỉ replace khi độ dài khác nhau để tránh loop
+      if (attributeFields.length !== newAttributes.length) {
+        replaceAttributes(newAttributes);
+      }
+    }
+  }, [attributeTypes, replaceAttributes, attributeFields.length]);
 
   const { fields: variantFields, replace: replaceVariants } = useFieldArray({
     control: form.control,
     name: "variants",
   });
 
-  const watchAttributes = useWatch({ control: form.control, name: "attributes" });
-  const watchInitialPrice = useWatch({ control: form.control, name: "initialPrice" });
+  const watchInitialPrice = useWatch({
+    control: form.control,
+    name: "initialPrice",
+  });
   const watchSalePrice = useWatch({ control: form.control, name: "salePrice" });
 
-  const isReadyToCreate = useMemo(() => variantFields.length > 0, [variantFields]);
+  const isReadyToCreate = useMemo(
+    () => variantFields.length > 0,
+    [variantFields]
+  );
 
   // Logic tạo biến thể tự động
+  // 1. Chỉ watch sâu vào trường attributes để tránh bị trigger bởi các field khác không liên quan
+  const watchAttributes = useWatch({
+    control: form.control,
+    name: "attributes",
+  });
+
+  // 2. Dùng JSON.stringify để so sánh giá trị thực tế thay vì tham chiếu
+  const attributesSnapshot = JSON.stringify(watchAttributes);
+
   useEffect(() => {
-    const activeAttrs = watchAttributes?.filter(
+    // Parse lại data từ snapshot
+    const currentAttrs = JSON.parse(
+      attributesSnapshot
+    ) as typeof watchAttributes;
+
+    const activeAttrs = currentAttrs?.filter(
       (a) => a.selectedValues && a.selectedValues.length > 0
     );
 
     if (!activeAttrs || activeAttrs.length === 0) {
-      replaceVariants([]);
+      // Chỉ replace nếu danh sách hiện tại đang có dữ liệu (tránh gọi vô ích)
+      if (variantFields.length > 0) replaceVariants([]);
       return;
     }
 
+    // Tính toán combinations
     const combinations = activeAttrs.reduce((acc, attr) => {
       const next: any[] = [];
       attr.selectedValues.forEach((val) => {
@@ -150,14 +214,32 @@ function AddNewProduct() {
       salePrice: watchSalePrice || 0,
     }));
 
-    replaceVariants(newVariants);
-  }, [watchAttributes, watchInitialPrice, watchSalePrice, replaceVariants]);
+    // Cực kỳ quan trọng: So sánh nội dung variants mới với variants cũ
+    // Nếu giống hệt nhau thì không replace để ngắt vòng lặp
+    const currentVariantsNames = variantFields.map((v) => v.name).join("|");
+    const newVariantsNames = newVariants.map((v) => v.name).join("|");
+
+    if (currentVariantsNames !== newVariantsNames) {
+      replaceVariants(newVariants);
+    }
+
+    // Thêm variantFields.length vào để kiểm tra trạng thái cũ
+  }, [
+    attributesSnapshot,
+    watchInitialPrice,
+    watchSalePrice,
+    replaceVariants,
+    variantFields.length,
+  ]);
 
   const onSubmit = async (data: FormValues) => {
+    // 1. Log toàn bộ giá trị nhận được từ form
+    // console.log("--- Form Data Raw ---");
+    // console.log(data);
+
     try {
       setLoading(true);
 
-      // Chuyển đổi dữ liệu attributes sang mảng 2 chiều ProductAttribute[][] cho API
       const apiAttributes = data.attributes
         .filter((attr) => attr.selectedValues.length > 0)
         .map((attr) =>
@@ -170,26 +252,29 @@ function AddNewProduct() {
       const payload: CreateProductParams = {
         name: data.name,
         productTypeId: data.productTypeId,
-        brandId: "1", 
+        brandId: "1",
         initialPrice: data.initialPrice,
         salePrice: data.salePrice,
         description: data.description || "",
         attributes: apiAttributes,
       };
 
+      // 2. Log payload cuối cùng sẽ gửi lên Server
+      // console.log("--- API Payload ---");
+      // console.log(payload);
+
       await createProduct(payload);
 
-      toast.success("Tạo thành công",{
-        description: `Đã tạo sản phẩm ${data.name} với ${variantFields.length} biến thể.`
+      toast.success("Tạo thành công", {
+        description: `Đã tạo sản phẩm ${data.name} với ${variantFields.length} biến thể.`,
       });
-
 
       form.reset();
       setOpen(false);
     } catch (error) {
-
-      toast.error("Lỗi",{
-        description: `Không thể tạo sản phẩm. Vui lòng thử lại sau.`
+      console.error("Submission Error:", error); // Log lỗi nếu có
+      toast.error("Lỗi", {
+        description: `Không thể tạo sản phẩm. Vui lòng thử lại sau.`,
       });
     } finally {
       setLoading(false);
@@ -199,19 +284,28 @@ function AddNewProduct() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant={"ghost"} className="hover:bg-accent hover:text-accent-foreground text-foreground">
+        <Button
+          variant={"ghost"}
+          className="hover:bg-accent hover:text-accent-foreground text-foreground"
+        >
           <Plus className="mr-2 h-4 w-4" /> Tạo mới
         </Button>
       </DialogTrigger>
 
       <DialogContent className="min-w-[950px] max-w-[95vw] h-[90vh] flex flex-col p-0 gap-0 border-border bg-background">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex flex-col h-full"
+          >
             <div className="p-6 pb-2">
               <DialogHeader>
-                <DialogTitle className="text-foreground text-xl">Thêm hàng hóa mới</DialogTitle>
+                <DialogTitle className="text-foreground text-xl">
+                  Thêm hàng hóa mới
+                </DialogTitle>
                 <DialogDescription className="text-muted-foreground">
-                  Nhập thông tin chi tiết. Hệ thống sẽ tự tạo các biến thể dựa trên thuộc tính bạn chọn.
+                  Nhập thông tin chi tiết. Hệ thống sẽ tự tạo các biến thể dựa
+                  trên thuộc tính bạn chọn.
                 </DialogDescription>
               </DialogHeader>
             </div>
@@ -225,7 +319,11 @@ function AddNewProduct() {
                       Mã hàng
                     </FormLabel>
                     <FormControl>
-                      <Input placeholder="Mã tự động" disabled className="bg-muted text-muted-foreground border-border" />
+                      <Input
+                        placeholder="Mã tự động"
+                        disabled
+                        className="bg-muted text-muted-foreground border-border"
+                      />
                     </FormControl>
                   </FormItem>
 
@@ -238,7 +336,11 @@ function AddNewProduct() {
                           Tên hàng
                         </FormLabel>
                         <FormControl>
-                          <Input placeholder="VD: Áo sơ mi nam" {...field} className="border-border focus-visible:ring-primary" />
+                          <Input
+                            placeholder="VD: Áo sơ mi nam"
+                            {...field}
+                            className="border-border focus-visible:ring-primary"
+                          />
                         </FormControl>
                         <FormMessage className="text-destructive text-xs" />
                       </FormItem>
@@ -250,16 +352,24 @@ function AddNewProduct() {
                     name="productTypeId"
                     render={({ field }) => (
                       <FormItem className="col-span-1">
-                        <FormLabel className="text-foreground font-medium">Nhóm hàng</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormLabel className="text-foreground font-medium">
+                          Nhóm hàng
+                        </FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value?.toString() || ""}
+                        >
                           <FormControl>
                             <SelectTrigger className="border-border focus:ring-primary">
                               <SelectValue placeholder="Chọn nhóm" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {MOCK_PRODUCT_TYPES.map((type) => (
-                              <SelectItem key={type.id} value={type.id}>
+                            {productTypes.map((type) => (
+                              <SelectItem
+                                key={type.id}
+                                value={type.id.toString()} // Ép kiểu string ở đây
+                              >
                                 {type.name}
                               </SelectItem>
                             ))}
@@ -274,12 +384,14 @@ function AddNewProduct() {
                     name="description"
                     render={({ field }) => (
                       <FormItem className="col-span-2">
-                        <FormLabel className="text-foreground font-medium">Mô tả</FormLabel>
+                        <FormLabel className="text-foreground font-medium">
+                          Mô tả
+                        </FormLabel>
                         <FormControl>
-                          <Textarea 
-                            placeholder="Thông tin chi tiết về sản phẩm..." 
-                            className="border-border focus-visible:ring-primary resize-none" 
-                            {...field} 
+                          <Textarea
+                            placeholder="Thông tin chi tiết về sản phẩm..."
+                            className="border-border focus-visible:ring-primary resize-none"
+                            {...field}
                           />
                         </FormControl>
                       </FormItem>
@@ -288,12 +400,21 @@ function AddNewProduct() {
                 </div>
 
                 {/* --- GIÁ VỐN GIÁ BÁN --- */}
-                <Accordion type="single" collapsible defaultValue="prices" className="border-t border-border">
+                <Accordion
+                  type="single"
+                  collapsible
+                  defaultValue="prices"
+                  className="border-t border-border"
+                >
                   <AccordionItem value="prices" className="border-none">
                     <AccordionTrigger className="hover:no-underline py-4 group">
                       <div className="flex flex-col items-start text-left">
-                        <span className="text-md font-bold text-foreground group-hover:text-primary transition-colors">Giá vốn & Giá bán</span>
-                        <span className="text-xs text-muted-foreground font-normal">Thiết lập mức giá chung để áp dụng nhanh</span>
+                        <span className="text-md font-bold text-foreground group-hover:text-primary transition-colors">
+                          Giá vốn & Giá bán
+                        </span>
+                        <span className="text-xs text-muted-foreground font-normal">
+                          Thiết lập mức giá chung để áp dụng nhanh
+                        </span>
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="grid grid-cols-2 gap-4 pt-0 pb-4">
@@ -302,13 +423,19 @@ function AddNewProduct() {
                         name="initialPrice"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-foreground">Giá vốn chung</FormLabel>
+                            <FormLabel className="text-foreground">
+                              Giá vốn chung
+                            </FormLabel>
                             <FormControl>
-                              <Input 
-                                type="text" 
-                                className="text-right border-border focus-visible:ring-primary font-medium" 
+                              <Input
+                                type="text"
+                                className="text-right border-border focus-visible:ring-primary font-medium"
                                 value={formatNumber(field.value)}
-                                onChange={(e) => field.onChange(parseFormattedNumber(e.target.value))}
+                                onChange={(e) =>
+                                  field.onChange(
+                                    parseFormattedNumber(e.target.value)
+                                  )
+                                }
                               />
                             </FormControl>
                           </FormItem>
@@ -319,13 +446,19 @@ function AddNewProduct() {
                         name="salePrice"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-foreground">Giá bán chung</FormLabel>
+                            <FormLabel className="text-foreground">
+                              Giá bán chung
+                            </FormLabel>
                             <FormControl>
-                              <Input 
-                                type="text" 
-                                className="text-right border-border focus-visible:ring-primary font-medium text-primary" 
+                              <Input
+                                type="text"
+                                className="text-right border-border focus-visible:ring-primary font-medium text-primary"
                                 value={formatNumber(field.value)}
-                                onChange={(e) => field.onChange(parseFormattedNumber(e.target.value))}
+                                onChange={(e) =>
+                                  field.onChange(
+                                    parseFormattedNumber(e.target.value)
+                                  )
+                                }
                               />
                             </FormControl>
                           </FormItem>
@@ -336,17 +469,29 @@ function AddNewProduct() {
                 </Accordion>
 
                 {/* --- THUỘC TÍNH --- */}
-                <Accordion type="single" collapsible defaultValue="attributes" className="border-t border-border">
+                <Accordion
+                  type="single"
+                  collapsible
+                  defaultValue="attributes"
+                  className="border-t border-border"
+                >
                   <AccordionItem value="attributes" className="border-none">
                     <AccordionTrigger className="hover:no-underline py-4 group">
                       <div className="flex flex-col items-start text-left">
-                        <span className="text-md font-bold text-foreground group-hover:text-primary transition-colors">Thuộc tính (Phân loại)</span>
-                        <span className="text-xs text-muted-foreground font-normal">Chọn các giá trị để tạo ra các biến thể sản phẩm</span>
+                        <span className="text-md font-bold text-foreground group-hover:text-primary transition-colors">
+                          Thuộc tính (Phân loại)
+                        </span>
+                        <span className="text-xs text-muted-foreground font-normal">
+                          Chọn các giá trị để tạo ra các biến thể sản phẩm
+                        </span>
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="space-y-3">
                       {form.getValues("attributes").map((item, index) => (
-                        <div key={item.typeId} className="flex gap-4 items-center bg-accent/20 p-4 rounded-lg border border-border">
+                        <div
+                          key={item.typeId}
+                          className="flex gap-4 items-center bg-accent/20 p-4 rounded-lg border border-border"
+                        >
                           <div className="w-1/4">
                             <span className="text-sm font-bold text-primary uppercase tracking-tight">
                               {item.typeName}
@@ -359,10 +504,17 @@ function AddNewProduct() {
                             render={({ field }) => (
                               <div className="flex-1">
                                 <TagCombobox
-                                  options={mockAttributes
-                                    .filter(attr => attr.attributeType?.id === item.typeId)
-                                    .map(a => ({ id: a.id, name: a.value }))
-                                  }
+                                  options={attributes
+                                    .filter(
+                                      (attr) =>
+                                        // Ép cả 2 về String để đảm bảo phép so sánh luôn chính xác
+                                        String(attr.attributeType?.id) ===
+                                        String(item.typeId)
+                                    )
+                                    .map((a) => ({
+                                      id: String(a.id), // Ép id về string cho đồng bộ với TagCombobox
+                                      name: a.value,
+                                    }))}
                                   selected={field.value || []}
                                   onChange={field.onChange}
                                   placeholder={`Chọn ${item.typeName}...`}
@@ -381,8 +533,12 @@ function AddNewProduct() {
                   <div className="space-y-4 pt-4 border-t border-border">
                     <div className="flex justify-between items-end">
                       <div className="flex flex-col">
-                        <span className="text-md font-bold text-foreground uppercase tracking-wider">Danh sách biến thể</span>
-                        <span className="text-xs text-muted-foreground">Hệ thống tự động sinh {variantFields.length} mã hàng</span>
+                        <span className="text-md font-bold text-foreground uppercase tracking-wider">
+                          Danh sách biến thể
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          Hệ thống tự động sinh {variantFields.length} mã hàng
+                        </span>
                       </div>
                     </div>
 
@@ -390,14 +546,23 @@ function AddNewProduct() {
                       <Table>
                         <TableHeader className="bg-muted/50">
                           <TableRow className="border-border hover:bg-transparent">
-                            <TableHead className="w-[350px] text-foreground font-bold">Tên biến thể</TableHead>
-                            <TableHead className="text-foreground font-bold text-right">Giá vốn (đ)</TableHead>
-                            <TableHead className="text-foreground font-bold text-right">Giá bán (đ)</TableHead>
+                            <TableHead className="w-[350px] text-foreground font-bold">
+                              Tên biến thể
+                            </TableHead>
+                            <TableHead className="text-foreground font-bold text-right">
+                              Giá vốn (đ)
+                            </TableHead>
+                            <TableHead className="text-foreground font-bold text-right">
+                              Giá bán (đ)
+                            </TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {variantFields.map((v, vIndex) => (
-                            <TableRow key={v.id} className="border-border hover:bg-accent/5 transition-colors">
+                            <TableRow
+                              key={v.id}
+                              className="border-border hover:bg-accent/5 transition-colors"
+                            >
                               <TableCell className="font-semibold text-primary py-3">
                                 {v.name}
                               </TableCell>
@@ -406,11 +571,15 @@ function AddNewProduct() {
                                   control={form.control}
                                   name={`variants.${vIndex}.initialPrice`}
                                   render={({ field }) => (
-                                    <Input 
-                                      type="text" 
-                                      className="h-9 text-right border-border focus-visible:ring-primary" 
+                                    <Input
+                                      type="text"
+                                      className="h-9 text-right border-border focus-visible:ring-primary"
                                       value={formatNumber(field.value)}
-                                      onChange={(e) => field.onChange(parseFormattedNumber(e.target.value))}
+                                      onChange={(e) =>
+                                        field.onChange(
+                                          parseFormattedNumber(e.target.value)
+                                        )
+                                      }
                                     />
                                   )}
                                 />
@@ -420,11 +589,15 @@ function AddNewProduct() {
                                   control={form.control}
                                   name={`variants.${vIndex}.salePrice`}
                                   render={({ field }) => (
-                                    <Input 
-                                      type="text" 
-                                      className="h-9 text-right border-border focus-visible:ring-primary text-primary font-medium" 
+                                    <Input
+                                      type="text"
+                                      className="h-9 text-right border-border focus-visible:ring-primary text-primary font-medium"
                                       value={formatNumber(field.value)}
-                                      onChange={(e) => field.onChange(parseFormattedNumber(e.target.value))}
+                                      onChange={(e) =>
+                                        field.onChange(
+                                          parseFormattedNumber(e.target.value)
+                                        )
+                                      }
                                     />
                                   )}
                                 />
@@ -442,16 +615,23 @@ function AddNewProduct() {
             <div className="p-6 border-t border-border bg-background">
               <DialogFooter className="gap-2">
                 <DialogClose asChild>
-                  <Button variant="outline" type="button" className="border-border hover:bg-accent text-foreground">Hủy bỏ</Button>
+                  <Button
+                    variant="outline"
+                    type="button"
+                    className="border-border hover:bg-accent text-foreground"
+                  >
+                    Hủy bỏ
+                  </Button>
                 </DialogClose>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={!isReadyToCreate || loading}
                   className="bg-primary text-primary-foreground hover:bg-primary/90 min-w-[180px] font-bold"
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang xử lý...
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang xử
+                      lý...
                     </>
                   ) : isReadyToCreate ? (
                     `Tạo ${variantFields.length} sản phẩm`

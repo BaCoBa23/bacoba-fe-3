@@ -1,4 +1,4 @@
-import type { Product } from "@/types";
+import type { Attribute, AttributeType, Product, ProductType } from "@/types";
 import axios from "axios";
 import type { AxiosInstance, AxiosError } from "axios";
 
@@ -100,6 +100,124 @@ export const createProduct = async (params?: CreateProductParams) => {
     const response = await apiClient.post<ProductsApiResponse>("/products", {
       params,
     });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    throw error;
+  }
+};
+
+// product Type
+export interface ProductTypesApiResponse {
+  success: boolean;
+  message: string;
+  data: ProductType[];
+  meta: {
+    totalItems: number;
+    currentPage: number;
+    pageSize: number;
+    totalPages: number;
+  };
+}
+
+export interface CreateProductTypes {
+  name: string;
+
+}
+
+export const getProductTypes = async () => {
+  try {
+    const response = await apiClient.get<ProductTypesApiResponse>("/product-types");
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    throw error;
+  }
+};
+
+export const createProductType = async (param:CreateProductTypes) => {
+  try {
+    const response = await apiClient.post<ProductTypesApiResponse>("/product-types",param);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    throw error;
+  }
+};
+
+export const editProductType = async (id:string,param:CreateProductTypes) => {
+  try {
+    const response = await apiClient.put<ProductTypesApiResponse>(`/product-types/${id}`,param);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    throw error;
+  }
+};
+
+// attributeTypes
+export interface AttributeTypesApiResponse {
+  success: boolean;
+  message: string;
+  data: AttributeType[];
+  meta: {
+    totalItems: number;
+    currentPage: number;
+    pageSize: number;
+    totalPages: number;
+  };
+}
+export interface CreateAttributeTypes {
+  name: string;
+
+}
+
+export const createAttributeType = async (param:CreateAttributeTypes) => {
+  try {
+    const response = await apiClient.post<AttributeTypesApiResponse>("/attribute-types",param);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    throw error;
+  }
+};
+
+export const getAttributeTypes = async () => {
+  try {
+    const response = await apiClient.get<AttributeTypesApiResponse>("/attribute-types");
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    throw error;
+  }
+};
+
+export const editAttributeType = async (id:string,param:CreateAttributeTypes) => {
+  try {
+    const response = await apiClient.put<ProductTypesApiResponse>(`/attribute-types/${id}`,param);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    throw error;
+  }
+};
+
+// attribute
+export interface AttributesApiResponse {
+  success: boolean;
+  message: string;
+  data: Attribute[];
+  meta: {
+    totalItems: number;
+    currentPage: number;
+    pageSize: number;
+    totalPages: number;
+  };
+}
+
+export const getAttributes = async () => {
+  try {
+    const response = await apiClient.get<AttributesApiResponse>("/attributes");
     return response.data;
   } catch (error) {
     console.error("Error fetching products:", error);
