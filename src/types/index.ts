@@ -15,10 +15,10 @@ export * from "./AttributeType";
 
 // Provider types
 export * from "./Provider";
-// export * from "./HistoryProvider";
-// export * from "./ReceivedNote";
-// export * from "./ReceivedProduct";
+export * from "./HistoryProvider";
+export * from "./ReceivedNote";
+export * from "./ReceivedProduct";
 
 // Bill types
 export * from "./Bill";
-// export * from "./BillProduct";
+export * from "./BillProduct";

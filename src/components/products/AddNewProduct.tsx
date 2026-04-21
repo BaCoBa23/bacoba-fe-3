@@ -70,21 +70,20 @@ const parseFormattedNumber = (val: string) => {
 
 interface ManageAttributeTypesProps {
   attributeTypes: AttributeType[];
-  setAttributeTypes: React.Dispatch<React.SetStateAction<AttributeType[]>>;
-  productTypes: ProductType[];
-  setProductTypes: React.Dispatch<React.SetStateAction<AttributeType[]>>;
-  attributes: Attribute[];
-  setAttributes: React.Dispatch<React.SetStateAction<AttributeType[]>>
 
+  productTypes: ProductType[];
+
+  attributes: Attribute[];
+
+  onSuccess?: () => void;
 }
 
 function AddNewProduct({
   attributeTypes,
-  setAttributeTypes,
   productTypes,
-  setProductTypes,
+
   attributes,
-  setAttributes
+  onSuccess,
 }: ManageAttributeTypesProps) {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -269,7 +268,9 @@ function AddNewProduct({
       toast.success("Tạo thành công", {
         description: `Đã tạo sản phẩm ${data.name} với ${variantFields.length} biến thể.`,
       });
-
+      if (onSuccess) {
+        onSuccess();
+      }
       form.reset();
       setOpen(false);
     } catch (error) {

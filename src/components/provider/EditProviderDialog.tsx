@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogClose,
@@ -39,25 +39,24 @@ import {
   Edit2,
 } from "lucide-react";
 import { Input } from "../ui/input";
+import { toast } from "sonner";
+import type { Provider } from "@/types";
+import { editProviders } from "@/services/api";
+
 // import { Textarea } from "../ui/textarea";
 
 // Giả định cấu trúc Provider từ danh sách của bạn
-interface Provider {
-  id: string;
-  name: string;
-  phoneNumber?: string | null;
-  email?: string | null;
-  status: string;
-  debtTotal: number;
-  total: number;
-}
+
 
 interface EditProviderDialogProps {
   provider: Provider;
   trigger?: React.ReactNode; // Cho phép tùy biến nút bấm mở dialog
+  onSuccess?: () => void;
 }
 
-function EditProviderDialog({ provider }: EditProviderDialogProps) {
+function EditProviderDialog({ provider,onSuccess }: EditProviderDialogProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const FormSchema = z.object({
     name: z.string().min(1, "Tên nhà cung cấp là bắt buộc"),
     phoneNumber: z.string().optional().nullable(),
@@ -67,7 +66,7 @@ function EditProviderDialog({ provider }: EditProviderDialogProps) {
       .optional()
       .or(z.literal(""))
       .nullable(),
-    status: z.string().min(1, "Vui lòng chọn trạng thái"),
+    status: z.enum(["active", "inactive"]), // Giữ nguyên để hiển thị nhưng có thể không gửi
   });
 
   type FormValues = z.infer<typeof FormSchema>;
@@ -78,24 +77,51 @@ function EditProviderDialog({ provider }: EditProviderDialogProps) {
       name: provider.name,
       phoneNumber: provider.phoneNumber || "",
       email: provider.email || "",
-      status: provider.status,
+      status: provider.status as "active" | "inactive",
     },
   });
 
   // Cập nhật lại form khi provider prop thay đổi
+  
   useEffect(() => {
-    form.reset({
-      name: provider.name,
-      phoneNumber: provider.phoneNumber || "",
-      email: provider.email || "",
-      status: provider.status,
-    });
-  }, [provider, form]);
+    if (isOpen) {
+      form.reset({
+        name: provider.name,
+        phoneNumber: provider.phoneNumber || "",
+        email: provider.email || "",
+        status: provider.status as "active" | "inactive",
+      });
+    }
+  }, [provider, form, isOpen]);
 
-  const onSubmit = (data: FormValues) => {
-    const payload = { ...data, id: provider.id };
-    console.log("Cập nhật nhà cung cấp:", payload);
-    // Thực hiện gọi API Update ở đây
+  const onSubmit = async (data: FormValues) => {
+    setIsSubmitting(true);
+    try {
+      // Chỉ lấy 3 trường dữ liệu như yêu cầu
+      const payload = {
+        name: data.name,
+        phoneNumber: data.phoneNumber,
+        email: data.email,
+        status: data.status, // Thêm status nếu backend yêu cầu hoặc bỏ ra nếu chỉ muốn 3 cái trên
+      };
+
+      const response = await editProviders(provider.id, payload as any);
+
+      if (response.success) {
+        toast.success("Cập nhật thông tin thành công");
+        const newData = response.data as unknown as Provider;
+        if (onSuccess) {
+          onSuccess();
+        }
+        setIsOpen(false);
+        // Có thể gọi hàm reload data ở đây nếu cần
+      }
+    } catch (error: any) {
+      console.error("Lỗi cập nhật:", error);
+      toast.error(error.response?.data?.message || "Không thể cập nhật nhà cung cấp");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const formatVND = (amount: number) => {
@@ -106,7 +132,7 @@ function EditProviderDialog({ provider }: EditProviderDialogProps) {
   };
 
   return (
-    <Dialog>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="">
           <Edit2 className="w-4 h-4" /> Chỉnh sửa thông tin

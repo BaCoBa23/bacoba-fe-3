@@ -19,6 +19,7 @@ import {
   Edit,
   MoreHorizontal,
   Plus,
+  RefreshCcw,
   Trash2,
 } from "lucide-react";
 import {
@@ -83,29 +84,39 @@ function ProductsList() {
 
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
 
+  const fetchProductsData = async () => {
+    setLoading(true);
+    try {
+      const res = await getProducts({
+        page: currentPage,
+        pageSize: pageSize,
+        search: search || undefined,
+        status: "active",
+      });
+      setProducts(res.data);
+      setTotalItems(res.meta.totalItems);
+      setTotalPages(res.meta.totalPages);
+    } catch (err: any) {
+      setError(err?.message || "Lỗi tải sản phẩm");
+    } finally {
+      setTimeout(() => {
+      setLoading(false);
+        
+      }, 500);
+    }
+  };
+  const handleReload = () => {
+    // Nếu bạn muốn reload hoàn toàn về trang 1 và xóa search:
+    // setCurrentPage(1);
+    // setSearch("");
+
+    // Gọi lại API
+    fetchProductsData();
+  };
 
   useEffect(() => {
-    const fetchProductsData = async () => {
-      setLoading(true);
-      try {
-        const res = await getProducts({
-          page: currentPage,
-          pageSize: pageSize,
-          search: search || undefined,
-          status: "active",
-        });
-        setProducts(res.data);
-        setTotalItems(res.meta.totalItems);
-        setTotalPages(res.meta.totalPages);
-      } catch (err: any) {
-        setError(err?.message || "Lỗi tải sản phẩm");
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchProductsData();
-  }, [currentPage, pageSize, search, selectedTypes]);
-
+  }, [currentPage, pageSize, search, selectedTypes]); // Lưu ý: dùng selectedProductTypes thay vì selectedTypes nếu state bên dưới dùng tên đó
 
   useEffect(() => {
     const fetchStaticMetadata = async () => {
@@ -118,11 +129,15 @@ function ProductsList() {
         if (attrTypesRes.success) setAttributeTypes(attrTypesRes.data);
       } catch (err) {
         console.error("Lỗi tải Metadata:", err);
+      }finally {
+        setTimeout(() => {
+        setLoading(false);
+          
+        }, 500);
       }
     };
     fetchStaticMetadata();
-  }, [productTypes,attributeTypes]);
-
+  }, [productTypes, attributeTypes]);
 
   useEffect(() => {
     const fetchAttributesData = async () => {
@@ -131,7 +146,13 @@ function ProductsList() {
         if (res.success) setAttributes(res.data);
       } catch (err) {
         console.error("Lỗi tải danh sách giá trị thuộc tính:", err);
+      } finally {
+        setTimeout(() => {
+        setLoading(false);
+          
+        }, 500);
       }
+      
     };
     fetchAttributesData();
   }, [attributes]);
@@ -340,12 +361,19 @@ function ProductsList() {
         <div className="basis-1/3 flex justify-around items-center">
           <AddNewProduct
             attributes={attributes}
-            setAttributes={setAttributes}
+   
             attributeTypes={attributeTypes}
-            setAttributeTypes={setAttributeTypes}
+          
             productTypes={productTypes}
-            setProductTypes={setProductTypes}
+            onSuccess={fetchProductsData}
           />
+          <Button
+            variant={"ghost"}
+            onClick={handleReload}
+            disabled={loading} // Vô hiệu hóa khi đang load
+          >
+            <RefreshCcw className={loading ? "animate-spin" : ""} />
+          </Button>
           <AddNewReceivedNote selectedProducts={selectedVariants} />
         </div>
       </div>
@@ -387,8 +415,6 @@ function ProductsList() {
                   return typeId === type.id;
                 })
                 .map((attr) => ({ id: attr.id, name: attr.value }));
-
-              
 
               return (
                 <div
