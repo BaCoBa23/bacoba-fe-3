@@ -97,9 +97,9 @@ export interface CreateProductParams {
 
 export const createProduct = async (params?: CreateProductParams) => {
   try {
-    const response = await apiClient.post<ProductsApiResponse>("/products", {
+    const response = await apiClient.post<ProductsApiResponse>("/products", 
       params,
-    });
+    );
     return response.data;
   } catch (error) {
     console.error("Error fetching products:", error);

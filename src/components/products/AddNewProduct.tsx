@@ -74,7 +74,8 @@ interface ManageAttributeTypesProps {
   productTypes: ProductType[];
   setProductTypes: React.Dispatch<React.SetStateAction<AttributeType[]>>;
   attributes: Attribute[];
-  setAttributes: React.Dispatch<React.SetStateAction<AttributeType[]>>;
+  setAttributes: React.Dispatch<React.SetStateAction<AttributeType[]>>
+
 }
 
 function AddNewProduct({
@@ -83,7 +84,7 @@ function AddNewProduct({
   productTypes,
   setProductTypes,
   attributes,
-  setAttributes,
+  setAttributes
 }: ManageAttributeTypesProps) {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -260,8 +261,8 @@ function AddNewProduct({
       };
 
       // 2. Log payload cuối cùng sẽ gửi lên Server
-      // console.log("--- API Payload ---");
-      // console.log(payload);
+      console.log("--- API Payload ---");
+      console.log(payload);
 
       await createProduct(payload);
 
