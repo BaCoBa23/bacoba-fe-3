@@ -84,7 +84,7 @@ function AddNewHistory({
         providerId,
         paidAmount: data.paidAmount,
         description: data.description,
-        status: "active" as const, // Ép kiểu cho đúng enum API mong đợi
+        status: "completed" as const, // Ép kiểu cho đúng enum API mong đợi
         // Lưu ý: Nếu backend của bạn nhận createdAt thì giữ nguyên,
         // nếu không payload mặc định thường là providerId, paidAmount, description.
       };
@@ -118,7 +118,7 @@ function AddNewHistory({
   };
 
   return (
-    <Dialog>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button
           variant="outline"

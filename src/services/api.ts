@@ -79,7 +79,7 @@ export interface ProductsApiResponse {
 export const getProducts = async (params?: GetProductsParams) => {
   try {
     const response = await apiClient.get<ProductsApiResponse>("/products", {
-      params,
+      params
     });
     return response.data;
   } catch (error) {
@@ -403,7 +403,7 @@ export interface CreateHistoryProvidersParams {
   providerId: string;
   paidAmount: number;
   description?: string | null;
-  status?: "active" | "inactive";
+  status?: "completed" | "pending" | "cancelled";
 }
 
 export const getHistoryProviders = async () => {
@@ -461,6 +461,29 @@ export interface BillsApiResponse {
   };
 }
 
+export interface CreateBillProductParam {
+  productId: string;
+  quantity: number;
+  salePrice: number;
+  total: number;
+}
+
+export interface CreateBillParams {
+  name: string;
+  customerName: string;
+  phoneNumber: string;
+  discount: number;
+  total: number;
+  status: string;
+  billProducts: CreateBillProductParam[];
+}
+
+export interface CreateBillResponse {
+  success: boolean;
+  message: string;
+  data: any; // Thay any bằng interface Bill nếu bạn đã định nghĩa
+}
+
 export const getBills = async (params?: GetProductsParams) => {
   try {
     // Đổi AttributesApiResponse thành ReceivedNotesApiResponse
@@ -470,6 +493,16 @@ export const getBills = async (params?: GetProductsParams) => {
     return response.data;
   } catch (error) {
     console.error("Error fetching bills :", error);
+    throw error;
+  }
+};
+
+export const createBill = async (data: CreateBillParams) => {
+  try {
+    const response = await apiClient.post<CreateBillResponse>("/bills", data);
+    return response.data;
+  } catch (error) {
+    console.error("Error creating bill:", error);
     throw error;
   }
 };

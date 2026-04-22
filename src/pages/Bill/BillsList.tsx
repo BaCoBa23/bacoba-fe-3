@@ -26,9 +26,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import TagCombobox from "@/components/ui/TagCombobox";
-import { MOCK_BILLS } from "@/types";
+import { getBills, type BillsApiResponse } from "@/services/api";
+import type { Bill } from "@/types";
 
 function BillsList() {
   interface Option {
@@ -47,17 +48,53 @@ function BillsList() {
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Logic lọc hóa đơn
-  const filteredBills = MOCK_BILLS.filter((bill: any) => {
-    const matchesStatus =
-      selectedStatus.length === 0 ||
-      selectedStatus.some((s) => s.id === bill.status);
-    const matchesSearch =
-      bill.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (bill.customerName?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
+  const [bills, setBills] = useState<Bill[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [meta, setMeta] = useState<BillsApiResponse["meta"] | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
-    return matchesStatus && matchesSearch;
-  });
+  const fetchBills = async () => {
+    try {
+      setLoading(true);
+      const params = {
+        page: currentPage,
+        pageSize: 10,
+        status: selectedStatus.map((s) => s.id).join(","),
+        search: searchQuery,
+      };
+
+      const response = await getBills(params);
+      if (response.success) {
+        setBills(response.data);
+        setMeta(response.meta);
+      }
+    } catch (error) {
+      // Xử lý lỗi nếu cần (đã có console.error ở service)
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      fetchBills();
+    }, 500); // Debounce search 500ms
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [currentPage, selectedStatus, searchQuery]);
+
+  // Logic lọc hóa đơn
+  // const bills = bills.filter((bill: any) => {
+  //   const matchesStatus =
+  //     selectedStatus.length === 0 ||
+  //     selectedStatus.some((s) => s.id === bill.status);
+  //   const matchesSearch =
+  //     bill.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  //     (bill.customerName?.toLowerCase().includes(searchQuery.toLowerCase()) ??
+  //       false);
+
+  //   return matchesStatus && matchesSearch;
+  // });
 
   const toggleRowExpand = (id: string) => {
     setExpandedRows((prev) =>
@@ -93,7 +130,9 @@ function BillsList() {
     <div className="w-full h-full p-5 flex flex-wrap gap-y-6 bg-background">
       {/* HEADER SECTION */}
       <div className="basis-1/4">
-        <p className="text-2xl font-bold tracking-tight text-foreground">Hóa đơn</p>
+        <p className="text-2xl font-bold tracking-tight text-foreground">
+          Hóa đơn
+        </p>
       </div>
       <div className="basis-3/4 flex justify-between">
         <div className="basis-1/2">
@@ -114,7 +153,10 @@ function BillsList() {
           <TagCombobox
             options={statusOptions}
             selected={selectedStatus}
-            onChange={(val) => setSelectedStatus(val)}
+            onChange={(val) => {
+              setSelectedStatus(val);
+              setCurrentPage(1);
+            }}
             placeholder="Chọn trạng thái..."
           />
         </div>
@@ -130,37 +172,52 @@ function BillsList() {
                 <TableHead className="w-[50px]">
                   <Checkbox
                     checked={
-                      filteredBills.length > 0 &&
-                      filteredBills.every((b: any) => selectedRows.includes(b.id))
+                      bills.length > 0 &&
+                      bills.every((b: any) => selectedRows.includes(b.id))
                     }
                     onCheckedChange={(checked) => {
                       if (checked) {
-                        const allIds = filteredBills.flatMap((b: any) => [
+                        const allIds = bills.flatMap((b: any) => [
                           b.id,
                           ...(b.billProducts?.map((p: any) => p.id) || []),
                         ]);
-                        setSelectedRows(Array.from(new Set([...selectedRows, ...allIds])));
+                        setSelectedRows(
+                          Array.from(new Set([...selectedRows, ...allIds]))
+                        );
                       } else {
-                        const currentIds = filteredBills.flatMap((b: any) => [
+                        const currentIds = bills.flatMap((b: any) => [
                           b.id,
                           ...(b.billProducts?.map((p: any) => p.id) || []),
                         ]);
-                        setSelectedRows(selectedRows.filter((id) => !currentIds.includes(id)));
+                        setSelectedRows(
+                          selectedRows.filter((id) => !currentIds.includes(id))
+                        );
                       }
                     }}
                   />
                 </TableHead>
-                <TableHead className="font-bold text-foreground">Mã hóa đơn</TableHead>
-                <TableHead className="font-bold text-foreground">Thời gian</TableHead>
-                <TableHead className="font-bold text-foreground">Khách hàng</TableHead>
-                <TableHead className="text-right font-bold text-foreground">Tổng tiền</TableHead>
-                <TableHead className="text-center font-bold text-foreground">Trạng thái</TableHead>
+                <TableHead className="font-bold text-foreground">
+                  Mã hóa đơn
+                </TableHead>
+                <TableHead className="font-bold text-foreground">
+                  Thời gian
+                </TableHead>
+                <TableHead className="font-bold text-foreground">
+                  Khách hàng
+                </TableHead>
+                <TableHead className="text-right font-bold text-foreground">
+                  Tổng tiền
+                </TableHead>
+                <TableHead className="text-center font-bold text-foreground">
+                  Trạng thái
+                </TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredBills.map((bill: any) => {
-                const productIds = bill.billProducts?.map((p: any) => p.id) || [];
+              {bills.map((bill: any) => {
+                const productIds =
+                  bill.billProducts?.map((p: any) => p.id) || [];
                 const isBillSelected = selectedRows.includes(bill.id);
                 const isExpanded = expandedRows.includes(bill.id);
 
@@ -168,44 +225,77 @@ function BillsList() {
                   <React.Fragment key={bill.id}>
                     <TableRow
                       data-state={isBillSelected && "selected"}
-                      className={isExpanded ? "border-b-0 bg-primary/5" : "hover:bg-muted/30"}
+                      className={
+                        isExpanded
+                          ? "border-b-0 bg-primary/5"
+                          : "hover:bg-muted/30"
+                      }
                     >
                       <TableCell>
-                        <button onClick={() => toggleRowExpand(bill.id)} className="p-1 hover:text-primary transition-colors">
-                          {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                        <button
+                          onClick={() => toggleRowExpand(bill.id)}
+                          className="p-1 hover:text-primary transition-colors"
+                        >
+                          {isExpanded ? (
+                            <ChevronDown size={16} />
+                          ) : (
+                            <ChevronRight size={16} />
+                          )}
                         </button>
                       </TableCell>
                       <TableCell>
                         <Checkbox
                           checked={isBillSelected}
-                          onCheckedChange={() => handleSelectRow(bill.id, productIds)}
+                          onCheckedChange={() =>
+                            handleSelectRow(bill.id, productIds)
+                          }
                         />
                       </TableCell>
                       <TableCell>
-                         <div className="flex flex-col">
-                            <span className="text-sm font-medium text-foreground">{bill.id}</span>
-                            {bill.id === "BILL-2024-005" && (
-                               <span className="text-[10px] text-primary flex items-center gap-1 italic">
-                                 <ArrowRightLeft size={10} /> Đổi từ BILL-2024-004
-                               </span>
-                            )}
-                         </div>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium text-foreground">
+                            {bill.id}
+                          </span>
+                          {bill.exchange && (
+                            <span className="text-[10px] text-primary flex items-center gap-1 italic">
+                              <ArrowRightLeft size={10} />
+                              Đổi từ {bill.exchange.id}
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {bill.createdAt.toLocaleString("vi-VN")}
+                        {new Date(bill.createdAt).toLocaleString("vi-VN", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col">
-                          <span className="font-medium text-foreground">{bill.customerName || "Khách lẻ"}</span>
-                          <span className="text-xs text-muted-foreground">{bill.phoneNumber}</span>
+                          <span className="font-medium text-foreground">
+                            {bill.customerName || "Khách lẻ"}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {bill.phoneNumber}
+                          </span>
                         </div>
                       </TableCell>
-                      <TableCell className={`text-right font-bold ${bill.status === 'returned' ? 'text-muted-foreground line-through' : 'text-primary'}`}>
+                      <TableCell
+                        className={`text-right font-bold ${
+                          bill.status === "returned"
+                            ? "text-muted-foreground line-through"
+                            : "text-primary"
+                        }`}
+                      >
                         {bill.total.toLocaleString()}
                       </TableCell>
                       <TableCell className="text-center">
                         <span className={getStatusStyle(bill.status)}>
-                          {statusOptions.find((o) => o.id === bill.status)?.name || bill.status}
+                          {statusOptions.find((o) => o.id === bill.status)
+                            ?.name || bill.status}
                         </span>
                       </TableCell>
                       <TableCell></TableCell>
@@ -218,19 +308,32 @@ function BillsList() {
                           <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-top-2 duration-200">
                             <div className="flex items-center justify-between border-b border-border pb-4">
                               <h3 className="text-xl font-bold text-foreground">
-                                Chi tiết hóa đơn <span className="text-primary">{bill.id}</span>
-                                {bill.status === 'returned' && <span className="ml-3 text-sm font-normal text-destructive italic">(Đã thực hiện trả hàng/đổi hàng)</span>}
+                                Chi tiết hóa đơn{" "}
+                                <span className="text-primary">{bill.id}</span>
+                                {bill.status === "returned" && (
+                                  <span className="ml-3 text-sm font-normal text-destructive italic">
+                                    (Đã thực hiện trả hàng/đổi hàng)
+                                  </span>
+                                )}
                               </h3>
                             </div>
 
                             <div className="grid grid-cols-2 gap-x-20 gap-y-2 text-sm">
                               <div className="flex justify-between border-b border-border/50 py-1">
-                                <span className="text-muted-foreground">Tên hóa đơn:</span>
-                                <span className="text-foreground">{bill.name || "N/A"}</span>
+                                <span className="text-muted-foreground">
+                                  Tên hóa đơn:
+                                </span>
+                                <span className="text-foreground">
+                                  {bill.name || "N/A"}
+                                </span>
                               </div>
                               <div className="flex justify-between border-b border-border/50 py-1">
-                                <span className="text-muted-foreground">Khách hàng:</span>
-                                <span className="text-primary font-medium">{bill.customerName}</span>
+                                <span className="text-muted-foreground">
+                                  Khách hàng:
+                                </span>
+                                <span className="text-primary font-medium">
+                                  {bill.customerName}
+                                </span>
                               </div>
                             </div>
 
@@ -238,21 +341,38 @@ function BillsList() {
                               <Table>
                                 <TableHeader className="bg-muted/50">
                                   <TableRow>
-                                    <TableHead className="text-foreground">Mã hàng</TableHead>
-                                    <TableHead className="text-foreground">Tên hàng</TableHead>
-                                    <TableHead className="text-right text-foreground">Số lượng</TableHead>
-                                    <TableHead className="text-right text-foreground">Đơn giá</TableHead>
-                                    <TableHead className="text-right text-foreground">Thành tiền</TableHead>
+                                    <TableHead className="text-foreground">
+                                      Mã hàng
+                                    </TableHead>
+                                    <TableHead className="text-foreground">
+                                      Tên hàng
+                                    </TableHead>
+                                    <TableHead className="text-right text-foreground">
+                                      Số lượng
+                                    </TableHead>
+                                    <TableHead className="text-right text-foreground">
+                                      Đơn giá
+                                    </TableHead>
+                                    <TableHead className="text-right text-foreground">
+                                      Thành tiền
+                                    </TableHead>
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                   {bill.billProducts?.map((item: any) => (
-                                    <TableRow key={item.id} className="hover:bg-muted/30 border-border">
+                                    <TableRow
+                                      key={item.id}
+                                      className="hover:bg-muted/30 border-border"
+                                    >
                                       <TableCell className="text-primary font-medium">
                                         {item.productId}
                                       </TableCell>
-                                      <TableCell className="text-foreground">{item.productName}</TableCell>
-                                      <TableCell className="text-right text-foreground">{item.quantity}</TableCell>
+                                      <TableCell className="text-foreground">
+                                        {item.productName}
+                                      </TableCell>
+                                      <TableCell className="text-right text-foreground">
+                                        {item.quantity}
+                                      </TableCell>
                                       <TableCell className="text-right text-foreground">
                                         {item.salePrice.toLocaleString()}
                                       </TableCell>
@@ -269,7 +389,9 @@ function BillsList() {
                                       Tổng tiền hàng:
                                     </TableCell>
                                     <TableCell className="text-right font-bold text-foreground">
-                                      {(bill.total + (bill.discount || 0)).toLocaleString()}
+                                      {(
+                                        bill.total + (bill.discount || 0)
+                                      ).toLocaleString()}
                                     </TableCell>
                                   </TableRow>
                                   <TableRow className="hover:bg-transparent border-none">
@@ -284,7 +406,9 @@ function BillsList() {
                                   <TableRow className="hover:bg-transparent border-none">
                                     <TableCell colSpan={3}></TableCell>
                                     <TableCell className="text-right font-bold text-lg text-foreground">
-                                      {bill.status === 'returned' ? 'Tiền đã trả:' : 'Khách phải trả:'}
+                                      {bill.status === "returned"
+                                        ? "Tiền đã trả:"
+                                        : "Khách phải trả:"}
                                     </TableCell>
                                     <TableCell className="text-right font-bold text-lg text-primary">
                                       {bill.total.toLocaleString()}
@@ -295,15 +419,19 @@ function BillsList() {
                             </div>
 
                             {/* ACTION BUTTONS */}
-                            {bill.status === 'active' && (
+                            {bill.status === "active" && (
                               <div className="flex justify-end items-center gap-3 mt-2">
-                                <Button variant="outline" size="sm" className="flex items-center gap-2 hover:bg-muted font-medium">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex items-center gap-2 hover:bg-muted font-medium"
+                                >
                                   <FileText className="w-4 h-4 text-primary" />
                                   Đổi hàng
                                 </Button>
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
+                                <Button
+                                  variant="outline"
+                                  size="sm"
                                   className="flex items-center gap-2 text-destructive border-destructive/20 hover:bg-destructive hover:text-destructive-foreground transition-all font-medium"
                                 >
                                   <Undo2 className="w-4 h-4" />
@@ -326,10 +454,30 @@ function BillsList() {
         <div className="py-4">
           <Pagination>
             <PaginationContent>
-              <PaginationItem><PaginationPrevious href="#" className="hover:bg-muted text-foreground" /></PaginationItem>
-              <PaginationItem><PaginationLink href="#" isActive className="bg-primary text-primary-foreground hover:bg-primary/90">1</PaginationLink></PaginationItem>
-              <PaginationItem><PaginationEllipsis className="text-muted-foreground" /></PaginationItem>
-              <PaginationItem><PaginationNext href="#" className="hover:bg-muted text-foreground" /></PaginationItem>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  className="hover:bg-muted text-foreground"
+                />
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationLink
+                  href="#"
+                  isActive
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  1
+                </PaginationLink>
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationEllipsis className="text-muted-foreground" />
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  className="hover:bg-muted text-foreground"
+                />
+              </PaginationItem>
             </PaginationContent>
           </Pagination>
         </div>

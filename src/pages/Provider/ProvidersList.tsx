@@ -86,15 +86,14 @@ function ProvidersList() {
       console.error("Lỗi khi tải dữ liệu:", error);
     } finally {
       setTimeout(() => {
-      setLoading(false);
-        
+        setLoading(false);
       }, 200);
     }
   };
 
   useEffect(() => {
     fetchData();
-  }, [searchQuery,loading, meta.currentPage]);
+  }, [searchQuery, loading, meta.currentPage]);
 
   // Logic lọc Nhà cung cấp tại Client dựa trên trạng thái
   const filteredProviders = useMemo(() => {
@@ -218,9 +217,9 @@ function ProvidersList() {
                 <TableHead className="text-right font-bold text-foreground">
                   Tổng mua
                 </TableHead>
-                <TableHead className="text-right font-bold text-foreground">
+                {/* <TableHead className="text-right font-bold text-foreground">
                   Đã trả
-                </TableHead>
+                </TableHead> */}
                 <TableHead className="text-right font-bold text-foreground">
                   Nợ hiện tại
                 </TableHead>
@@ -244,9 +243,9 @@ function ProvidersList() {
                     <TableCell className="text-right text-foreground">
                       {grandTotalBuy.toLocaleString()}
                     </TableCell>
-                    <TableCell className="text-right text-chart-4">
+                    {/* <TableCell className="text-right text-chart-4">
                       {grandTotalPaid.toLocaleString()}
-                    </TableCell>
+                    </TableCell> */}
                     <TableCell className="text-right text-destructive">
                       {grandTotalDebt.toLocaleString()}
                     </TableCell>
@@ -263,7 +262,10 @@ function ProvidersList() {
                     );
 
                     const totalPaidInHistory = providerHistories.reduce(
-                      (sum, item) => sum + item.paidAmount,
+                      (sum, item) =>
+                        item.status === "completed"
+                          ? sum + item.paidAmount
+                          : sum,
                       0
                     );
 
@@ -308,9 +310,9 @@ function ProvidersList() {
                           <TableCell className="text-right">
                             {prov.total.toLocaleString()}
                           </TableCell>
-                          <TableCell className="text-right text-chart-4">
+                          {/* <TableCell className="text-right text-chart-4">
                             {(prov.total - prov.debtTotal).toLocaleString()}
-                          </TableCell>
+                          </TableCell> */}
                           <TableCell className="text-right text-destructive">
                             {prov.debtTotal.toLocaleString()}
                           </TableCell>
@@ -359,70 +361,84 @@ function ProvidersList() {
                                     <TableBody>
                                       {providerHistories.length > 0 ? (
                                         <>
-                                          {providerHistories.map((hist) => (
-                                            <TableRow
-                                              key={hist.id}
-                                              className="border-border hover:bg-accent/20"
-                                            >
-                                              <TableCell className="font-medium text-chart-2">
-                                                HS-{hist.id}
-                                              </TableCell>
-                                              <TableCell className="text-foreground">
-                                                {new Date(
-                                                  hist.createdAt
-                                                ).toLocaleString("vi-VN")}
-                                              </TableCell>
-                                              <TableCell className="italic text-muted-foreground text-sm">
-                                                {hist.description ||
-                                                  "Không có ghi chú"}
-                                              </TableCell>
-                                              <TableCell className="text-center">
-                                                <span
-                                                  className={
-                                                    hist.status === "active"
-                                                      ? "text-chart-4 bg-chart-4/10 px-2 py-0.5 rounded text-xs"
-                                                      : "text-chart-5 bg-chart-5/10 px-2 py-0.5 rounded text-xs"
-                                                  }
-                                                >
-                                                  {hist.status === "active"
-                                                    ? "Thành công"
-                                                    : "Đã hủy"}
-                                                </span>
-                                              </TableCell>
-                                              <TableCell className="text-right font-bold text-primary">
-                                                {hist.paidAmount.toLocaleString()}
-                                              </TableCell>
-                                              <TableCell>
-                                                <DropdownMenu>
-                                                  <DropdownMenuTrigger asChild>
-                                                    <Button
-                                                      variant="ghost"
-                                                      className="h-8 w-8 p-0"
+                                          {providerHistories.map((hist) => {
+                                            const isCancelled =
+                                              hist.status === "cancelled";
+                                            return (
+                                              <TableRow
+                                                key={hist.id}
+                                                className={`border-border hover:bg-accent/20 ${
+                                                  isCancelled ? "opacity-60 bg-muted/20 line-through" : "" // Làm mờ nhẹ hàng bị hủy
+                                                }`}
+                                              >
+                                                <TableCell className="font-medium text-chart-2">
+                                                  HS-{hist.id}
+                                                </TableCell>
+                                                <TableCell className="text-foreground">
+                                                  {new Date(
+                                                    hist.createdAt
+                                                  ).toLocaleString("vi-VN")}
+                                                </TableCell>
+                                                <TableCell className="italic text-muted-foreground text-sm">
+                                                  {hist.description ||
+                                                    "Không có ghi chú"}
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                  <span
+                                                    className={
+                                                      hist.status === "completed"
+                                                        ? "text-chart-4 bg-chart-4/10 px-2 py-0.5 rounded text-xs"
+                                                        : "text-background bg-destructive/80 px-2 py-0.5 rounded text-xs"
+                                                    }
+                                                  >
+                                                    {hist.status === "completed"
+                                                      ? "Thành công"
+                                                      : "Đã hủy"}
+                                                  </span>
+                                                </TableCell>
+                                                <TableCell className="text-right font-bold text-primary">
+                                                  {hist.paidAmount.toLocaleString()}
+                                                </TableCell>
+                                                <TableCell>
+                                                  <DropdownMenu>
+                                                    <DropdownMenuTrigger
+                                                      asChild
                                                     >
-                                                      <MoreHorizontal className="h-4 w-4" />
-                                                    </Button>
-                                                  </DropdownMenuTrigger>
-                                                  <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem
-                                                      onSelect={(e) =>
-                                                        e.preventDefault()
-                                                      }
-                                                    >
-                                                      <EditHistoryProvider
-                                                        providerId={prov.id}
-                                                        history={hist}
-                                                        providerName={prov.name}
-                                                        currentDebtOfProvider={
-                                                          prov.debtTotal
+                                                      <Button
+                                                        variant="ghost"
+                                                        className="h-8 w-8 p-0"
+                                                        disabled={
+                                                          hist.status ===
+                                                          "cancelled"
                                                         }
-                                                        onRefresh={fetchData}
-                                                      />
-                                                    </DropdownMenuItem>
-                                                  </DropdownMenuContent>
-                                                </DropdownMenu>
-                                              </TableCell>
-                                            </TableRow>
-                                          ))}
+                                                      >
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                      </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                      <DropdownMenuItem
+                                                        onSelect={(e) =>
+                                                          e.preventDefault()
+                                                        }
+                                                      >
+                                                        <EditHistoryProvider
+                                                          providerId={prov.id}
+                                                          history={hist}
+                                                          providerName={
+                                                            prov.name
+                                                          }
+                                                          currentDebtOfProvider={
+                                                            prov.debtTotal
+                                                          }
+                                                          onRefresh={fetchData}
+                                                        />
+                                                      </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                  </DropdownMenu>
+                                                </TableCell>
+                                              </TableRow>
+                                            );
+                                          })}
                                           <TableRow className="bg-muted/30 border-t-2 border-border font-bold">
                                             <TableCell
                                               colSpan={4}
