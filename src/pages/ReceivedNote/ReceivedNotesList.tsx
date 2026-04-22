@@ -51,6 +51,7 @@ import {
   getReceivedNotes,
 } from "@/services/api";
 import { toast } from "sonner";
+import { BarcodeDialog } from "./BarcodeDialog";
 
 function ReceivedNotesList() {
   interface Option {
@@ -499,61 +500,51 @@ function ReceivedNotesList() {
                                   </TableCell>
                                 </TableRow>
                                 {/* --- 4. HÀNG NÚT THAO TÁC MỚI THÊM --- */}
-                                <div className="flex justify-end items-center gap-3 mt-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="flex items-center gap-2"
-                                    onClick={() => {
-                                      /* Logic in mã vạch */
-                                    }}
-                                    disabled={note.status!=="confirm"}
-                                  >
-                                    <Barcode className="w-4 h-4" />
-                                    In mã vạch
-                                  </Button>
+                                <TableRow className="hover:bg-transparent border-t-0">
+                                  <TableCell colSpan={6}>
+                                    {" "}
+                                    {/* colSpan phải khớp với tổng số cột của bảng chi tiết */}
+                                    <div className="flex justify-end items-center gap-3 mt-2">
+                                      <BarcodeDialog note={note} />
+                                      {/* Nút Nhập hàng: Chỉ hiện khi trạng thái là draft */}
+                                      {note.status === "draft" && (
+                                        <Button
+                                          variant="default"
+                                          size="sm"
+                                          className="flex items-center gap-2 bg-chart-4 hover:bg-chart-4/60"
+                                          onClick={() => handleConfirm(note.id)}
+                                        >
+                                          <CheckCircle2 className="w-4 h-4" />
+                                          Chấp nhận
+                                        </Button>
+                                      )}
 
-                                  {/* Nút Nhập hàng: Chỉ hiện khi trạng thái là draft */}
-                                  {note.status === "draft" && (
-                                    <Button
-                                      variant="default"
-                                      size="sm"
-                                      className="flex items-center gap-2 bg-chart-4 hover:bg-chart-4/60"
-                                      onClick={() => handleConfirm(note.id)}
-                                     
+                                      {/* Nút Trả hàng: Chỉ hiện khi trạng thái là confirm */}
 
-                                    >
-                                      <CheckCircle2 className="w-4 h-4" />
-                                      Chấp nhận
-                                    </Button>
-                                  )}
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="flex items-center gap-2 text-destructive border-destructive hover:bg-destructive/10"
+                                        onClick={() => handleCancel(note.id)}
+                                        disabled={note.status === "cancelled"}
+                                      >
+                                        <Undo2 className="w-4 h-4" />
+                                        Hủy
+                                      </Button>
 
-                                  {/* Nút Trả hàng: Chỉ hiện khi trạng thái là confirm */}
-                                  
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="flex items-center gap-2 text-destructive border-destructive hover:bg-destructive/10"
-                                      onClick={() => handleCancel(note.id)}
-                                      disabled={note.status==="cancelled"}
-                                    >
-                                      <Undo2 className="w-4 h-4" />
-                                      Hủy
-                                    </Button>
-                               
-
-                                  {/* Nút Sửa: Disable nếu đã hủy */}
-                                  <div
-                                    className={
-                                      note.status === "cancelled"
-                                        ? "pointer-events-none opacity-50"
-                                        : ""
-                                    }
-                                  >
-                                    <EditReceivedNote receivedNote={note} />
-                                  </div>
-                                 
-                                </div>
+                                      {/* Nút Sửa: Disable nếu đã hủy */}
+                                      <div
+                                        className={
+                                          note.status === "cancelled"
+                                            ? "pointer-events-none opacity-50"
+                                            : ""
+                                        }
+                                      >
+                                        <EditReceivedNote receivedNote={note} />
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
                               </TableBody>
                             </Table>
                           </div>

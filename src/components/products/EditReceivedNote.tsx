@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from "react";
+import React, { useMemo, useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -36,9 +36,13 @@ import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Trash2, Save, Edit3, PackageOpen } from "lucide-react";
+import type { Provider } from "@/types";
+import { editReceivedNote, getProviders } from "@/services/api";
+import { toast } from "sonner";
 
 interface EditReceivedNoteProps {
   receivedNote: any;
+  onSuccess?: () => void;
 }
 
 const formatDisplay = (val: number | string) => {
@@ -51,22 +55,21 @@ const parseNumber = (val: string) => {
   return isNaN(parsed) ? 0 : parsed;
 };
 
+
 const formSchema = z.object({
-  id: z.string(),
-  providerId: z.string().min(1, "Vui lòng chọn nhà cung cấp"),
+  id: z.coerce.string(), // Tự động biến number thành string
+  providerId: z.coerce.string().min(1, "Vui lòng chọn nhà cung cấp"),
   createdAt: z.string(),
-  receivedProducts: z
-    .array(
-      z.object({
-        id: z.string(),
-        productId: z.string(),
-        productName: z.string(),
-        addQuantity: z.number().min(1, "Tối thiểu 1"),
-        price: z.number().min(0),
-        discount: z.number().min(0),
-      })
-    )
-    .min(1, "Chưa có sản phẩm nào trong phiếu"),
+  receivedProducts: z.array(
+    z.object({
+      id: z.coerce.string(), // Sửa ở đây nữa
+      productId: z.coerce.string(), // Và ở đây
+      productName: z.string(),
+      addQuantity: z.number().min(1, "Tối thiểu 1"),
+      price: z.number().min(0),
+      discount: z.number().min(0),
+    })
+  ).min(1, "Chưa có sản phẩm nào trong phiếu"),
   totalDiscount: z.number().min(0),
   paidAmount: z.number().min(0),
   description: z.string().optional(),
@@ -74,7 +77,35 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export function EditReceivedNote({ receivedNote }: EditReceivedNoteProps) {
+export function EditReceivedNote({
+  receivedNote,
+  onSuccess,
+}: EditReceivedNoteProps) {
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [open, setOpen] = useState(false); // Quản lý trạng thái đóng mở Dialog
+  const fetchData = async () => {
+    try {
+      const [provRes] = await Promise.all([
+        getProviders({
+          search: "",
+          page: 1,
+          pageSize: 1000,
+        } as any),
+      ]);
+
+      if (provRes.success) {
+        setProviders(provRes.data);
+      }
+    } catch (error) {
+      console.error("Lỗi khi tải dữ liệu:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -88,7 +119,7 @@ export function EditReceivedNote({ receivedNote }: EditReceivedNoteProps) {
     },
   });
 
-  const { control, handleSubmit, setValue, reset } = form;
+  const { control, handleSubmit, setValue, reset, formState: { errors } } = form;
   const { fields, remove } = useFieldArray({
     control,
     name: "receivedProducts",
@@ -99,7 +130,7 @@ export function EditReceivedNote({ receivedNote }: EditReceivedNoteProps) {
     if (receivedNote) {
       reset({
         id: receivedNote.id,
-        providerId: receivedNote.provider?.id || "",
+        providerId: receivedNote.provider?.id?.toString() || "",
         createdAt: new Date(receivedNote.createdAt).toISOString().slice(0, 16),
         receivedProducts:
           receivedNote.receivedProducts?.map((p: any) => ({
@@ -137,24 +168,54 @@ export function EditReceivedNote({ receivedNote }: EditReceivedNoteProps) {
     if (e.key === "Enter") e.preventDefault();
   };
 
-  const onSubmit = (data: FormValues) => {
-    console.log("Cập nhật phiếu nhập:", {
-      ...data,
-      ...totals,
-      status: "UPDATED",
-    });
+  const onSubmit = async (data: FormValues) => {
+    try {
+      setIsSubmitting(true);
+
+      // 2. Chuyển đổi dữ liệu từ Form về format API mong muốn
+      const apiParams = {
+        providerId: data.providerId,
+        description: data.description || "",
+        payedMoney: data.paidAmount,
+        phoneNumber: "",
+        debtMoney: totals.debt,
+        total: totals.totalAmount,
+        discount: data.totalDiscount,
+        status: "confirm" as const, // Hoặc giữ nguyên status cũ của phiếu
+        receivedProducts: data.receivedProducts.map((p) => ({
+          productId: p.productId,
+          addQuantity: p.addQuantity,
+          discount: p.discount,
+          description: "", // Hoặc map từ field nếu có
+          total: (p.price - p.discount) * p.addQuantity,
+        })),
+      };
+
+      // 3. Gọi API
+      const response = await editReceivedNote(data.id, apiParams);
+
+      if (response.success) {
+        toast.success("Cập nhật phiếu nhập thành công");
+        setOpen(false); // Đóng dialog
+        if (onSuccess) onSuccess(); // Refresh danh sách ở trang cha
+      } else {
+        toast.error(response.message || "Có lỗi xảy ra khi cập nhật");
+      }
+    } catch (error: any) {
+      console.error("Lỗi cập nhật:", error);
+      toast.error(error.response?.data?.message || "Lỗi kết nối máy chủ");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
           variant="default"
           size="sm"
           className="flex items-center gap-2 bg-chart-2 hover:bg-chart-2/90"
-          onClick={() => {
-            /* Logic chỉnh sửa */
-          }}
         >
           <Edit3 className="w-4 h-4" />
           Chỉnh sửa
@@ -171,7 +232,8 @@ export function EditReceivedNote({ receivedNote }: EditReceivedNoteProps) {
 
         <Form {...form}>
           <form
-            onSubmit={handleSubmit(onSubmit)}
+            // onSubmit={handleSubmit(onSubmit)}
+            onSubmit={handleSubmit(onSubmit, (err) => console.log("Lỗi đây nè:", err))}
             className="flex flex-1 min-h-0 overflow-hidden"
             onKeyDown={handleKeyDown}
           >
@@ -286,22 +348,33 @@ export function EditReceivedNote({ receivedNote }: EditReceivedNoteProps) {
                             <FormLabel className="font-bold text-foreground">
                               Nhà cung cấp
                             </FormLabel>
+                            {/* Thêm key={field.value} ở đây */}
                             <Select
                               onValueChange={field.onChange}
                               value={field.value}
+                              defaultValue={receivedNote.providerId}
+                              key={field.value}
                             >
                               <FormControl>
                                 <SelectTrigger className="bg-background">
-                                  <SelectValue placeholder="Chọn NCC" />
+                                  <SelectValue placeholder="Chọn nhà cung cấp" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="PROV-001">
-                                  Công ty Quần
-                                </SelectItem>
-                                <SelectItem value="PROV-002">
-                                  Công ty Áo
-                                </SelectItem>
+                                {providers.length > 0 ? (
+                                  providers.map((prov) => (
+                                    <SelectItem
+                                      key={prov.id}
+                                      value={prov.id.toString()}
+                                    >
+                                      {prov.name}
+                                    </SelectItem>
+                                  ))
+                                ) : (
+                                  <SelectItem value="loading" disabled>
+                                    Đang tải...
+                                  </SelectItem>
+                                )}
                               </SelectContent>
                             </Select>
                           </FormItem>

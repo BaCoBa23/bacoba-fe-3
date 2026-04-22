@@ -188,6 +188,9 @@ function ProductsList() {
    * Xử lý khi click vào checkbox hàng cha
    * Sẽ thêm hoặc xóa toàn bộ Object sản phẩm con của cha đó
    */
+  const handleClearSelection = () => {
+    setSelectedVariants([]);
+  };
   const handleSelectRow = (variants: any[]) => {
     const variantIds = variants.map((v) => v.id);
     const allSelected = variantIds.every((id) =>
@@ -367,7 +370,7 @@ function ProductsList() {
           >
             <RefreshCcw className={loading ? "animate-spin" : ""} />
           </Button>
-          <AddNewReceivedNote selectedProducts={selectedVariants} />
+          <AddNewReceivedNote selectedProducts={selectedVariants} onSuccess={handleClearSelection} />
         </div>
       </div>
 
@@ -570,7 +573,7 @@ function ProductsList() {
                       </TableCell>
 
                       <TableCell className="text-center">
-                        <DropdownMenu>
+                        {/* <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
                               variant="ghost"
@@ -591,7 +594,7 @@ function ProductsList() {
                             >
                               <Edit className="mr-2 h-4 w-4" /> Chỉnh sửa hàng
                               hóa
-                            </DropdownMenuItem> */}
+                            </DropdownMenuItem> 
                             <DropdownMenuItem
                               onClick={() =>
                                 console.log("Add variant", product.id)
@@ -604,7 +607,7 @@ function ProductsList() {
                               <Trash2 className="mr-2 h-4 w-4" /> Xóa hàng
                             </DropdownMenuItem>
                           </DropdownMenuContent>
-                        </DropdownMenu>
+                        </DropdownMenu> */}
                       </TableCell>
                     </TableRow>
 

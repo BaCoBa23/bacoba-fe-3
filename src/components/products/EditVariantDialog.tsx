@@ -33,6 +33,7 @@ import {
   FormMessage,
 } from "../ui/form";
 import { Input } from "../ui/input";
+import { editProduct } from "@/services/api";
 
 interface EditVariantDialogProps {
   variant: any; // Thay 'any' bằng interface Variant của bạn
@@ -69,25 +70,43 @@ function EditVariantDialog({ variant, onSuccess }: EditVariantDialogProps) {
     }
   }, [variant, form, isOpen]);
 
+  // Chuyển số thành chuỗi format: 1000000 -> "1.000.000"
+  const formatNumber = (value: string | number) => {
+    if (!value) return "";
+    const stringValue = value.toString().replace(/\D/g, ""); // Loại bỏ mọi ký tự không phải số
+    return stringValue.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  };
+
+  // Chuyển chuỗi format ngược lại thành số: "1.000.000" -> 1000000
+  const parseNumber = (value: string) => {
+    return Number(value.replace(/\./g, "")) || 0;
+  };
+
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
     try {
-      // Giả định gọi API: const response = await editVariant(variant.id, data);
-    //   console.log("Dữ liệu cập nhật:", data);
+      // 2. Thực hiện gọi API với variant.id và dữ liệu từ form
+      await editProduct(variant.id, data);
 
-      toast.success("Cập nhật giá thành công");
+      // 3. Thông báo thành công
+      toast.success("Cập nhật giá biến thể thành công!");
+
+      // 4. Gọi callback để load lại danh sách ở trang cha (nếu có)
       if (onSuccess) onSuccess();
+
+      // 5. Đóng Dialog
       setIsOpen(false);
     } catch (error: any) {
-      
-      toast.error(
-        error.response?.data?.message || "Không thể cập nhật biến thể"
-      );
+      console.error("Lỗi khi update variant:", error);
+
+      // 6. Xử lý thông báo lỗi từ server trả về
+      const errorMessage =
+        error.response?.data?.message || "Không thể cập nhật biến thể";
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
-
   const formatVND = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
@@ -99,7 +118,8 @@ function EditVariantDialog({ variant, onSuccess }: EditVariantDialogProps) {
   const watchedSalePrice = form.watch("salePrice") || 0;
   const watchedInitialPrice = form.watch("initialPrice") || 0;
   const profit = watchedSalePrice - watchedInitialPrice;
-  const profitMargin = watchedSalePrice > 0 ? (profit / watchedSalePrice) * 100 : 0;
+  const profitMargin =
+    watchedSalePrice > 0 ? (profit / watchedSalePrice) * 100 : 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -166,9 +186,17 @@ function EditVariantDialog({ variant, onSuccess }: EditVariantDialogProps) {
                       <FormControl>
                         <div className="relative">
                           <Input
-                            type="number"
+                            type="text" // Chuyển sang text để hiển thị dấu chấm
+                            placeholder="0"
+                            className="h-12 pl-4 pr-12 font-bold text-lg text-primary border-primary/20"
                             {...field}
-                            className="h-12 pl-4 pr-12 focus:ring-4 focus:ring-primary/10 transition-all font-semibold text-lg"
+                            // 1. Hiển thị giá trị đã được format
+                            value={formatNumber(field.value)}
+                            // 2. Khi gõ, xóa dấu chấm rồi mới lưu vào form state
+                            onChange={(e) => {
+                              const rawValue = parseNumber(e.target.value);
+                              field.onChange(rawValue);
+                            }}
                           />
                           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
                             đ
@@ -196,9 +224,17 @@ function EditVariantDialog({ variant, onSuccess }: EditVariantDialogProps) {
                       <FormControl>
                         <div className="relative">
                           <Input
-                            type="number"
+                            type="text" // Chuyển sang text để hiển thị dấu chấm
+                            placeholder="0"
+                            className="h-12 pl-4 pr-12 font-bold text-lg text-primary border-primary/20"
                             {...field}
-                            className="h-12 pl-4 pr-12 focus:ring-4 focus:ring-primary/10 transition-all font-bold text-lg text-primary border-primary/20"
+                            // 1. Hiển thị giá trị đã được format
+                            value={formatNumber(field.value)}
+                            // 2. Khi gõ, xóa dấu chấm rồi mới lưu vào form state
+                            onChange={(e) => {
+                              const rawValue = parseNumber(e.target.value);
+                              field.onChange(rawValue);
+                            }}
                           />
                           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-primary font-medium">
                             đ
@@ -220,9 +256,7 @@ function EditVariantDialog({ variant, onSuccess }: EditVariantDialogProps) {
                   <Info className="w-5 h-5 text-accent-foreground mt-0.5 shrink-0" />
                   <div className="text-xs text-accent-foreground leading-relaxed">
                     Lợi nhuận dự kiến:{" "}
-                    <span className="font-bold">
-                      {formatVND(profit)}
-                    </span>
+                    <span className="font-bold">{formatVND(profit)}</span>
                     <p className="mt-1 italic opacity-80">
                       Tỷ lệ lợi nhuận: {profitMargin.toFixed(1)}%
                     </p>

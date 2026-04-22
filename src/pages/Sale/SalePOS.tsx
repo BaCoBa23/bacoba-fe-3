@@ -106,30 +106,26 @@ export default function SalePOS() {
 
   useEffect(() => {
     const term = searchTerm.toLowerCase().trim();
+    if (!term) {
+      setSearchResults([]);
+      return;
+    }
 
-    // 1. Lấy danh sách ID sản phẩm đã có trong giỏ hàng hiện tại
-    const productsInCartIds =
-      activeBill?.billProducts?.map((p: any) => p.id) || [];
-
-    // 2. Lọc danh sách
     const results = allProducts.filter((product) => {
-      // Điều kiện 1: Sản phẩm chưa có trong giỏ hàng
-      if (productsInCartIds.includes(product.id)) return false;
-
-      // Nếu thanh search trống và đang focus, hiển thị tất cả (hoặc giới hạn 15 cái đầu)
-      if (!term) return isSearchFocused;
-
-      // Điều kiện 2: Logic search đặc thù
       const matchName = product.name.toLowerCase().includes(term);
       const matchId = product.id.toLowerCase().includes(term);
-      // Barcode phải khớp chính xác (sau khi trim)
-      const matchBarcode = product.barcode?.toLowerCase() === term;
-
+      const matchBarcode = product.barcode?.toLowerCase().includes(term);
       return matchName || matchId || matchBarcode;
     });
 
     setSearchResults(results);
-  }, [searchTerm, isSearchFocused, allProducts, activeBill?.billProducts]);
+
+    // OPTIONAL: Nếu gõ/quét khớp chính xác Barcode và chỉ có 1 kết quả
+    // thì có thể tự động add (tùy trải nghiệm người dùng bạn muốn)
+    // if (results.length === 1 && results[0].barcode?.toLowerCase() === term) {
+    //   addProductToBill(results[0]);
+    // }
+  }, [searchTerm, allProducts]);
 
   const createNewBill = () => {
     if (bills.length >= MAX_BILLS) {
@@ -254,7 +250,7 @@ export default function SalePOS() {
         discount: activeBill.discount || 0,
         // Tính tổng tiền sau chiết khấu (hoặc theo logic server của bạn)
         total: activeBill.total - (activeBill.discount || 0),
-        status: "pending", // Hoặc "completed" tùy nghiệp vụ
+        status: "completed", // Hoặc "completed" tùy nghiệp vụ
         billProducts: activeBill.billProducts.map((p: any) => ({
           productId: p.id,
           quantity: p.quantity,
@@ -283,6 +279,69 @@ export default function SalePOS() {
       setIsSubmitting(false);
     }
   };
+  const handleBarcodeScan = (code: string) => {
+    const cleanCode = code.trim().toLowerCase();
+
+    // Tìm sản phẩm khớp Barcode hoặc ID chính xác
+    const product = allProducts.find(
+      (p) =>
+        p.barcode?.toLowerCase() === cleanCode ||
+        p.id.toLowerCase() === cleanCode
+    );
+
+    if (product) {
+      addProductToBill(product);
+      toast.success(`Đã thêm: ${product.name}`);
+      setSearchTerm(""); // Xóa nội dung ô tìm kiếm nếu có
+    } else {
+      // Nếu không tìm thấy, điền vào ô search để người dùng thấy lỗi hoặc tìm thủ công
+      setSearchTerm(code);
+      searchInputRef.current?.focus();
+      toast.error("Không tìm thấy sản phẩm với mã này");
+    }
+  };
+  // Thêm vào trong component SalePOS
+  useEffect(() => {
+    let barcodeBuffer = "";
+    let lastKeyTime = Date.now();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const currentTime = Date.now();
+
+      // Máy scan thường gõ rất nhanh (dưới 30ms giữa các phím)
+      if (currentTime - lastKeyTime > 50) {
+        barcodeBuffer = ""; // Reset nếu gõ tay chậm
+      }
+
+      lastKeyTime = currentTime;
+
+      if (e.key === "Enter") {
+        if (barcodeBuffer.length > 2) {
+          handleBarcodeScan(barcodeBuffer);
+          barcodeBuffer = "";
+        }
+      } else {
+        // Chỉ lấy các ký tự chữ và số
+        if (e.key.length === 1) {
+          barcodeBuffer += e.key;
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [allProducts, activeBillId]); // Cần dependencies để hàm handleBarcodeScan có dữ liệu mới nhất
+
+  useEffect(() => {
+    const handleShortcuts = (e: KeyboardEvent) => {
+      if (e.key === "F2") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handleShortcuts);
+    return () => window.removeEventListener("keydown", handleShortcuts);
+  }, []);
 
   return (
     <div className="flex h-[calc(100vh-100px)] w-full bg-background text-foreground border-t border-border overflow-hidden">
@@ -358,6 +417,7 @@ export default function SalePOS() {
             variant="ghost"
             size="icon"
             className="ml-4 h-10 w-10 hover:text-primary"
+            onClick={() => searchInputRef.current?.focus()} // Thêm dòng này
           >
             <ScanBarcode size={18} />
           </Button>

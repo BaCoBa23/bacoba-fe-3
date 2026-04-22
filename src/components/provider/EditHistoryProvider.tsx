@@ -33,7 +33,7 @@ import {
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { cn } from "@/lib/utils";
-import { editHistoryProviders } from "@/services/api";
+import { cancelHistoryProviders, editHistoryProviders } from "@/services/api";
 import { toast } from "sonner";
 
 // Interface cho lịch sử thanh toán
@@ -114,16 +114,12 @@ function EditHistoryProvider({
     }
   };
 
-  const handleDeactivate = async (data: FormValues) => {
+  const handleDeactivate = async () => {
     if (!confirm("Bạn có chắc chắn muốn hủy phiếu chi này không?")) return;
 
     try {
       setIsSubmitting(true);
-      await editHistoryProviders(history.id, {
-        ...data,
-        providerId: providerId,
-        status: "inactive",
-      });
+      await cancelHistoryProviders(history.id);
       toast.success("Đã hủy phiếu chi thành công");
       setIsOpen(false);
       onRefresh?.();

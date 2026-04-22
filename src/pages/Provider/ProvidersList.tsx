@@ -93,7 +93,7 @@ function ProvidersList() {
 
   useEffect(() => {
     fetchData();
-  }, [searchQuery, loading, meta.currentPage]);
+  }, [searchQuery, meta.currentPage]);
 
   // Logic lọc Nhà cung cấp tại Client dựa trên trạng thái
   const filteredProviders = useMemo(() => {

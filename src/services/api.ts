@@ -104,6 +104,16 @@ export interface CreateProductParams {
   attributes: ProductAttribute[][];
 }
 
+export interface EditProductParams {
+  name: string;
+  productTypeId: string;
+  brandId: string;
+  initialPrice: number;
+  salePrice: number;
+  description: string;
+  status: string;
+}
+
 export const createProduct = async (params?: CreateProductParams) => {
   try {
     const response = await apiClient.post<ProductsApiResponse>(
@@ -113,6 +123,21 @@ export const createProduct = async (params?: CreateProductParams) => {
     return response.data;
   } catch (error) {
     console.error("Error fetching products:", error);
+    throw error;
+  }
+};
+
+// Thêm id vào interface hoặc sử dụng intersection type
+// Sửa tại file api service
+export const editProduct = async (id: string, params: Partial<EditProductParams>) => {
+  try {
+    const response = await apiClient.put<ProductsApiResponse>(
+      `/products/${id}`,
+      params
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error editing product:", error);
     throw error;
   }
 };
@@ -324,6 +349,23 @@ export const cancelReceivedNote = async (id:string) => {
     throw error;
   }
 };
+/**
+ * Cập nhật thông tin phiếu nhập (Ví dụ: sửa số lượng do đếm sai)
+ * @param id ID của phiếu nhập cần sửa
+ * @param params Dữ liệu hiệu chỉnh (tương tự mẫu JSON bạn cung cấp)
+ */
+export const editReceivedNote = async (id: string | number, params: CreateReceivedNoteParams) => {
+  try {
+    const response = await apiClient.put<ReceivedNotesApiResponse>(
+      `/received-notes/${id}`,
+      params
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`Error updating received note with ID ${id}:`, error);
+    throw error;
+  }
+};
 
 // Provider
 export interface ProvidersApiResponse {
@@ -441,6 +483,20 @@ export const editHistoryProviders = async (
     const response = await apiClient.put<HistoryProvidersApiResponse>(
       `/history-providers/${id}`,
       params
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error updating history provider:", error);
+    throw error;
+  }
+};
+
+export const cancelHistoryProviders = async (
+  id: string
+) => {
+  try {
+    const response = await apiClient.delete<HistoryProvidersApiResponse>(
+      `/history-providers/${id}`
     );
     return response.data;
   } catch (error) {
