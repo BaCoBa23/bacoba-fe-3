@@ -303,7 +303,7 @@ export interface CreateHistoryProvidersParams
     providerId: string;
     paidAmount: number;
     description?: string | null ;
-    status?: "active";
+    status?: "active"| "inactive";
   }
 
 

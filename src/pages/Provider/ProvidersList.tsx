@@ -379,14 +379,14 @@ function ProvidersList() {
                                               <TableCell className="text-center">
                                                 <span
                                                   className={
-                                                    hist.status === "completed"
+                                                    hist.status === "active"
                                                       ? "text-chart-4 bg-chart-4/10 px-2 py-0.5 rounded text-xs"
                                                       : "text-chart-5 bg-chart-5/10 px-2 py-0.5 rounded text-xs"
                                                   }
                                                 >
-                                                  {hist.status === "completed"
+                                                  {hist.status === "active"
                                                     ? "Thành công"
-                                                    : "Chờ duyệt"}
+                                                    : "Đã hủy"}
                                                 </span>
                                               </TableCell>
                                               <TableCell className="text-right font-bold text-primary">
@@ -415,6 +415,7 @@ function ProvidersList() {
                                                         currentDebtOfProvider={
                                                           prov.debtTotal
                                                         }
+                                                        onRefresh={fetchData}
                                                       />
                                                     </DropdownMenuItem>
                                                   </DropdownMenuContent>

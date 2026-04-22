@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogClose,
@@ -33,6 +33,8 @@ import {
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { cn } from "@/lib/utils";
+import { editHistoryProviders } from "@/services/api";
+import { toast } from "sonner";
 
 // Interface cho lịch sử thanh toán
 interface HistoryProvider {
@@ -48,13 +50,18 @@ interface EditHistoryProviderProps {
   history: HistoryProvider;
   providerName: string;
   currentDebtOfProvider: number; // Nợ hiện tại của NCC để tính toán lại
+  onRefresh?: () => void
 }
 
 function EditHistoryProvider({
   history,
+  providerId,
   providerName,
   currentDebtOfProvider,
+  onRefresh
 }: EditHistoryProviderProps) {
+  const [isSubmitting, setIsSubmitting] = useState  (false);
+  const [isOpen, setIsOpen] = useState(false); // Quản lý đóng mở dialog
   const FormSchema = z.object({
     paidAmount: z.coerce.number().min(1, "Số tiền phải lớn hơn 0"),
     description: z.string().optional().nullable(),
@@ -90,9 +97,43 @@ function EditHistoryProvider({
   const debtBeforeThisBill = currentDebtOfProvider + history.paidAmount;
   const newRemainingDebt = debtBeforeThisBill - (newPaidAmount || 0);
 
-  const onSubmit = (data: FormValues) => {
-    console.log("Cập nhật phiếu chi:", { ...data, id: history.id });
+  const onSubmit = async (data: FormValues) => {
+    try {
+      setIsSubmitting(true);
+      await editHistoryProviders(history.id, {
+        ...data,
+        providerId: providerId
+      });
+      toast.success("Cập nhật phiếu chi thành công");
+      setIsOpen(false);
+      onRefresh?.(); // Gọi callback để reload danh sách
+    } catch (error) {
+      toast.error("Có lỗi xảy ra khi cập nhật");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  const handleDeactivate = async (data: FormValues) => {
+    if (!confirm("Bạn có chắc chắn muốn hủy phiếu chi này không?")) return;
+
+    try {
+      setIsSubmitting(true);
+      await editHistoryProviders(history.id, {
+        ...data,
+        providerId: providerId,
+        status: "inactive",
+      });
+      toast.success("Đã hủy phiếu chi thành công");
+      setIsOpen(false);
+      onRefresh?.();
+    } catch (error) {
+      toast.error("Không thể hủy phiếu chi");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
 
   const formatVND = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -102,7 +143,7 @@ function EditHistoryProvider({
   };
 
   return (
-    <Dialog>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button
           variant="ghost"
@@ -258,7 +299,8 @@ function EditHistoryProvider({
                 variant="ghost"
                 type="button"
                 className="text-destructive hover:bg-destructive/10 hover:text-destructive font-bold gap-2"
-                onClick={() => console.log("Hủy phiếu chi:", history.id)}
+                disabled={isSubmitting}
+                onClick={() => handleDeactivate(form.getValues())}
               >
                 <Trash2 className="w-4 h-4" /> Hủy phiếu
               </Button>

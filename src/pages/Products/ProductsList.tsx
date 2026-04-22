@@ -100,8 +100,7 @@ function ProductsList() {
       setError(err?.message || "Lỗi tải sản phẩm");
     } finally {
       setTimeout(() => {
-      setLoading(false);
-        
+        setLoading(false);
       }, 500);
     }
   };
@@ -117,45 +116,40 @@ function ProductsList() {
   useEffect(() => {
     fetchProductsData();
   }, [currentPage, pageSize, search, selectedTypes]); // Lưu ý: dùng selectedProductTypes thay vì selectedTypes nếu state bên dưới dùng tên đó
-
-  useEffect(() => {
-    const fetchStaticMetadata = async () => {
-      try {
-        const [typesRes, attrTypesRes] = await Promise.all([
-          getProductTypes(),
-          getAttributeTypes(),
-        ]);
-        if (typesRes.success) setProductTypes(typesRes.data);
-        if (attrTypesRes.success) setAttributeTypes(attrTypesRes.data);
-      } catch (err) {
-        console.error("Lỗi tải Metadata:", err);
-      }finally {
-        setTimeout(() => {
+  const fetchStaticMetadata = async () => {
+    try {
+      const [typesRes, attrTypesRes] = await Promise.all([
+        getProductTypes(),
+        getAttributeTypes(),
+      ]);
+      if (typesRes.success) setProductTypes(typesRes.data);
+      if (attrTypesRes.success) setAttributeTypes(attrTypesRes.data);
+    } catch (err) {
+      console.error("Lỗi tải Metadata:", err);
+    } finally {
+      setTimeout(() => {
         setLoading(false);
-          
-        }, 500);
-      }
-    };
+      }, 500);
+    }
+  };
+  useEffect(() => {
     fetchStaticMetadata();
-  }, [productTypes, attributeTypes]);
-
-  useEffect(() => {
-    const fetchAttributesData = async () => {
-      try {
-        const res = await getAttributes();
-        if (res.success) setAttributes(res.data);
-      } catch (err) {
-        console.error("Lỗi tải danh sách giá trị thuộc tính:", err);
-      } finally {
-        setTimeout(() => {
+  }, []);
+  const fetchAttributesData = async () => {
+    try {
+      const res = await getAttributes();
+      if (res.success) setAttributes(res.data);
+    } catch (err) {
+      console.error("Lỗi tải danh sách giá trị thuộc tính:", err);
+    } finally {
+      setTimeout(() => {
         setLoading(false);
-          
-        }, 500);
-      }
-      
-    };
+      }, 500);
+    }
+  };
+  useEffect(() => {
     fetchAttributesData();
-  }, [attributes]);
+  }, []);
 
   // --- Chuyển đổi dữ liệu sang Options cho Combobox ---
   const productTypeOptions: Option[] = useMemo(
@@ -361,9 +355,7 @@ function ProductsList() {
         <div className="basis-1/3 flex justify-around items-center">
           <AddNewProduct
             attributes={attributes}
-   
             attributeTypes={attributeTypes}
-          
             productTypes={productTypes}
             onSuccess={fetchProductsData}
           />
@@ -384,7 +376,7 @@ function ProductsList() {
           <div className="basis-full w-full">
             <p className="basis-full text-sm font-bold py-3 text-foreground flex flex-wrap justify-between">
               <span>Nhóm hàng</span>
-              <ManageProductTypes />
+              <ManageProductTypes onSuccess={fetchStaticMetadata} />
             </p>
             <TagCombobox
               options={productTypeOptions}
@@ -400,6 +392,7 @@ function ProductsList() {
               <ManageAttributeTypes
                 types={attributeTypes}
                 setTypes={setAttributeTypes}
+                onSuccess={fetchStaticMetadata}
               />
             </p>
 

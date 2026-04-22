@@ -27,7 +27,11 @@ import {
 import { toast } from "sonner"; // Hoặc shadcn toast tùy project
 import { Skeleton } from "../ui/skeleton";
 
-export function ManageProductTypes() {
+interface ManageProductTypesProps {
+  onSuccess?: () => void;
+}
+
+export function ManageProductTypes({onSuccess}:ManageProductTypesProps) {
   const [types, setTypes] = useState<ProductType[]>([]);
   const [loading, setLoading] = useState(false);
   const [newName, setNewName] = useState("");
@@ -69,7 +73,9 @@ export function ManageProductTypes() {
 
         // Ép kiểu trực tiếp nếu bạn biết chắc chắn nó là 1 object đơn lẻ
         const newData = response.data as unknown as ProductType;
-
+        if (onSuccess) {
+          onSuccess();
+        }
         setTypes((prev) => [...prev, newData]);
 
         // 4. Reset input
@@ -102,7 +108,9 @@ export function ManageProductTypes() {
         
         // Extract the updated object from the response
         const updatedItem = response.data as unknown as ProductType;
-  
+        if (onSuccess) {
+          onSuccess();
+        }
         // 1. Update the list: Replace the old item with the updated one
         setTypes((prev) => 
           prev.map((item) => (item.id === id ? updatedItem : item))

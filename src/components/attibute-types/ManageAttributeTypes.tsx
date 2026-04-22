@@ -25,9 +25,10 @@ import { toast } from "sonner";
 interface ManageAttributeTypesProps {
   types: AttributeType[];
   setTypes: React.Dispatch<React.SetStateAction<AttributeType[]>>;
+  onSuccess?: () => void;
 }
 
-export function ManageAttributeTypes({ types, setTypes }: ManageAttributeTypesProps) {
+export function ManageAttributeTypes({ types, setTypes, onSuccess }: ManageAttributeTypesProps) {
   const [loading, setLoading] = useState(false);
   const [newTypeName, setNewTypeName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -72,7 +73,9 @@ export function ManageAttributeTypes({ types, setTypes }: ManageAttributeTypesPr
         const newData = response.data as unknown as AttributeType;
 
         setTypes((prev) => [...prev, newData]);
-
+        if (onSuccess) {
+          onSuccess();
+        }
         // 4. Reset input
         setNewTypeName("");
       }
@@ -109,6 +112,9 @@ export function ManageAttributeTypes({ types, setTypes }: ManageAttributeTypesPr
         setTypes((prev) => 
           prev.map((item) => (item.id === id ? updatedItem : item))
         );
+        if (onSuccess) {
+          onSuccess();
+        }
   
         // 2. Reset UI state
         setEditingId(null);

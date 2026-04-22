@@ -267,6 +267,7 @@ function EditProviderDialog({ provider,onSuccess }: EditProviderDialogProps) {
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value}
+                        disabled
                       >
                         <FormControl>
                           <SelectTrigger className="h-12">
