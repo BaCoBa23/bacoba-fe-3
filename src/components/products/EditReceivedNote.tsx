@@ -82,7 +82,7 @@ export function EditReceivedNote({
   onSuccess,
 }: EditReceivedNoteProps) {
   const [providers, setProviders] = useState<Provider[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [, setIsSubmitting] = useState(false);
   const [open, setOpen] = useState(false); // Quản lý trạng thái đóng mở Dialog
   const fetchData = async () => {
     try {
@@ -119,7 +119,7 @@ export function EditReceivedNote({
     },
   });
 
-  const { control, handleSubmit, setValue, reset, formState: { errors } } = form;
+  const { control, handleSubmit, setValue, reset, formState: {  } } = form;
   const { fields, remove } = useFieldArray({
     control,
     name: "receivedProducts",

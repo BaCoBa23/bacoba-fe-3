@@ -13,7 +13,7 @@ import {
 
 import {
   // ArrowRight,
-  Barcode,
+  // Barcode,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -73,7 +73,7 @@ function ReceivedNotesList() {
     pageSize: 10,
     totalPages: 1,
   });
-  const [isLoading, setIsLoading] = useState(false);
+  const [, setIsLoading] = useState(false);
 
   // 2. State cho Filter & UI
   const [selectedStatus, setSelectedStatus] = useState<Option[]>([]);

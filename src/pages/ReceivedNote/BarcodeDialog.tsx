@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import  { useState, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -7,7 +7,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+// import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -27,12 +27,12 @@ interface BarcodeDialogProps {
 export function BarcodeDialog({ note }: BarcodeDialogProps) {
   // States cấu hình in ấn
   const [paperSize, setPaperSize] = useState("2t"); // Khổ 2 tem
-  const [copyCount, setCopyCount] = useState(1); // Bản sao
+  // const [copyCount, setCopyCount] = useState(1); // Bản sao
 
   // 1. Logic tạo danh sách tem dựa trên số lượng thực tế
   const allLabels = useMemo(() => {
     return (
-      note.receivedProducts?.flatMap((product) => {
+      note.receivedProducts?.flatMap((product:any) => {
         return Array.from({ length: product.addQuantity }).map((_, index) => ({
           ...product,
           uniqueKey: `${product.id}-${index}`,
@@ -79,7 +79,7 @@ export function BarcodeDialog({ note }: BarcodeDialogProps) {
                 minHeight: "150mm",
               }}
             >
-              {allLabels.map((item) => (
+              {allLabels.map((item:any) => (
                 <div
                   key={item.uniqueKey}
                   className="flex flex-col items-center p-2 border shadow border-muted-foreground/30 bg-background"

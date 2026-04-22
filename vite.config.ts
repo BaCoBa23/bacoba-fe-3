@@ -12,6 +12,7 @@ export default defineConfig({
     },
   },
   server: {
+    allowedHosts: ['.ngrok-free.dev'],
     proxy: {
       "/api/v1": {
         target: "http://localhost:5555",
@@ -19,5 +20,6 @@ export default defineConfig({
         rewrite: (path) => path,
       },
     },
+    
   },
 })

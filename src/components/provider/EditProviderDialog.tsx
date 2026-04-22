@@ -56,7 +56,7 @@ interface EditProviderDialogProps {
 
 function EditProviderDialog({ provider,onSuccess }: EditProviderDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [, setIsSubmitting] = useState(false);
   const FormSchema = z.object({
     name: z.string().min(1, "Tên nhà cung cấp là bắt buộc"),
     phoneNumber: z.string().optional().nullable(),
@@ -109,7 +109,7 @@ function EditProviderDialog({ provider,onSuccess }: EditProviderDialogProps) {
 
       if (response.success) {
         toast.success("Cập nhật thông tin thành công");
-        const newData = response.data as unknown as Provider;
+        response.data as unknown as Provider;
         if (onSuccess) {
           onSuccess();
         }

@@ -1,7 +1,7 @@
 
 
 
-export interface ReceivedProduct {
+ interface ReceivedProduct {
   id: string;
   productId: string;
   productName: string;

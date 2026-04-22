@@ -31,7 +31,7 @@ const STORAGE_KEY = "temp_sales_pos_bills";
 
 export default function SalePOS() {
   const [allProducts, setAllProducts] = useState<Product[]>([]); // State lưu sản phẩm từ API
-  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const [, setIsLoadingProducts] = useState(false);
   const [bills, setBills] = useState<Bill[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeBillId, setActiveBillId] = useState<string | null>(null);
@@ -201,7 +201,7 @@ export default function SalePOS() {
           ...bill,
           billProducts: newProducts,
           total: newProducts.reduce(
-            (sum, p) => sum + p.salePrice * p.quantity,
+            (sum:any, p:any) => sum + p.salePrice * p.quantity,
             0
           ),
         };
@@ -220,7 +220,7 @@ export default function SalePOS() {
           ...bill,
           billProducts: newProducts,
           total: newProducts.reduce(
-            (sum, p) => sum + p.salePrice * (p.quantity || 0),
+            (sum:any, p:any) => sum + p.salePrice * (p.quantity || 0),
             0
           ),
         };
@@ -476,7 +476,7 @@ export default function SalePOS() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {activeBill?.billProducts?.map((item: any, idx) => (
+                    {activeBill?.billProducts?.map((item: any, idx:any) => (
                       <TableRow
                         key={item.id}
                         className="group hover:bg-muted/30"

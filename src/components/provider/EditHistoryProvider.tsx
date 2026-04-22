@@ -296,7 +296,7 @@ function EditHistoryProvider({
                 type="button"
                 className="text-destructive hover:bg-destructive/10 hover:text-destructive font-bold gap-2"
                 disabled={isSubmitting}
-                onClick={() => handleDeactivate(form.getValues())}
+                onClick={() => handleDeactivate()}
               >
                 <Trash2 className="w-4 h-4" /> Hủy phiếu
               </Button>

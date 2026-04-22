@@ -32,7 +32,7 @@ import { Textarea } from "../ui/textarea";
 import { useState } from "react";
 import { toast } from "sonner";
 import { createHistoryProviders } from "@/services/api";
-import type {  HistoryProvider } from "@/types";
+// import type {  HistoryProvider } from "@/types";
 
 
 
@@ -50,7 +50,7 @@ function AddNewHistory({
   onSuccess
 }: AddNewHistoryProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [, setIsSubmitting] = useState(false);
 
   const FormSchema = z.object({
     paidAmount: z.coerce.number().min(1, "Số tiền thanh toán phải lớn hơn 0"),

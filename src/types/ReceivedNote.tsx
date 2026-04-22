@@ -1,12 +1,12 @@
 
 
-export interface Provider {
+ interface Provider {
   id: string;
   name: string;
   status: string;
   [key: string]: any;
 }
-export interface ReceivedProduct {
+ interface ReceivedProduct {
   id: string;
   productId: string;
   productName: string;

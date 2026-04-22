@@ -16,13 +16,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+// import {
+//   Select,
+//   SelectContent,
+//   SelectItem,
+//   SelectTrigger,
+//   SelectValue,
+// } from "@/components/ui/select";
 import {
   Accordion,
   AccordionContent,
@@ -39,7 +39,7 @@ import { Separator } from "../ui/separator";
 import { useState } from "react";
 import { createProviders } from "@/services/api";
 import { toast } from "sonner";
-import type { Provider } from "@/types";
+// import type { Provider } from "@/types";
 
 interface AddNewProviderProps {
   onSuccess?: () => void;
@@ -48,7 +48,7 @@ interface AddNewProviderProps {
 
 function AddNewProvider({onSuccess}:AddNewProviderProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [, setIsSubmitting] = useState(false);
   const FormSchema = z.object({
     name: z.string().min(1, "Tên nhà cung cấp là bắt buộc"),
     phoneNumber: z.string().optional().nullable(),

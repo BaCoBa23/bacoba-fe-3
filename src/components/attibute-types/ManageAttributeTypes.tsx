@@ -18,8 +18,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Settings2, Plus, Pencil, Check, X } from "lucide-react";
-import { mockAttributeTypes, type AttributeType } from "@/types";
-import { createAttributeType, createProductType, editAttributeType, getAttributeTypes } from "@/services/api";
+import {  type AttributeType } from "@/types";
+import { createAttributeType, editAttributeType, getAttributeTypes } from "@/services/api";
 import { toast } from "sonner";
 
 interface ManageAttributeTypesProps {
@@ -29,11 +29,11 @@ interface ManageAttributeTypesProps {
 }
 
 export function ManageAttributeTypes({ types, setTypes, onSuccess }: ManageAttributeTypesProps) {
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [newTypeName, setNewTypeName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch dữ liệu từ API
   const fetchTypes = async () => {

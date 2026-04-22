@@ -49,8 +49,8 @@ function BillsList() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const [bills, setBills] = useState<Bill[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [meta, setMeta] = useState<BillsApiResponse["meta"] | null>(null);
+  const [, setLoading] = useState(true);
+  const [, setMeta] = useState<BillsApiResponse["meta"] | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
   const fetchBills = async () => {

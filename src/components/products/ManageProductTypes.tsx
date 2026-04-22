@@ -5,7 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter,
+  // DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Layers, Plus, Pencil, Trash2, Check, X, Loader2 } from "lucide-react";
+import { Layers, Plus, Pencil,  Check, X, Loader2 } from "lucide-react";
 import { type ProductType } from "@/types/ProductType";
 import {
   createProductType,

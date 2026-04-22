@@ -1,5 +1,5 @@
 
-export interface BillProduct {
+ interface BillProduct {
   id: string;
   productId: string;
   productName: string;

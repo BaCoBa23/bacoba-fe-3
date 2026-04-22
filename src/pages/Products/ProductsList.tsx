@@ -16,11 +16,11 @@ import {
   // ArrowRight,
   ChevronDown,
   ChevronRight,
-  Edit,
+  // Edit,
   MoreHorizontal,
-  Plus,
+  // Plus,
   RefreshCcw,
-  Trash2,
+  // Trash2,
 } from "lucide-react";
 import {
   Table,
@@ -36,14 +36,14 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
+  // DropdownMenuLabel,
+  // DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
 // Import dữ liệu Mock
-import { mockAttributeTypes } from "@/types/AttributeType";
-import { mockAttributes } from "@/types/Attribute";
+// import { mockAttributeTypes } from "@/types/AttributeType";
+// import { mockAttributes } from "@/types/Attribute";
 // import { MOCK_PROVIDERS } from "@/types/Provider";
 import { AddNewReceivedNote } from "@/components/products/AddNewReceivedNote";
 import { ManageAttributeTypes } from "@/components/attibute-types/ManageAttributeTypes";
@@ -53,7 +53,7 @@ import {
   getAttributes,
   getProductTypes,
   getProducts,
-  type GetProductsParams,
+  // type GetProductsParams,
 } from "@/services/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import EditVariantDialog from "@/components/products/EditVariantDialog";
@@ -69,21 +69,21 @@ function ProductsList() {
   const [attributeTypes, setAttributeTypes] = useState<any[]>([]); // New state
   const [attributes, setAttributes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
 
   // Pagination & Filter States
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
-  const [search, setSearch] = useState("");
+  const [currentPage, ] = useState(1);
+  const [pageSize, ] = useState(10);
+  const [, setTotalPages] = useState(1);
+  const [, setTotalItems] = useState(0);
+  const [search, ] = useState("");
 
-  const [selectedTypes, setselectedTypes] = useState<Option[]>([]);
-  const [selectedSizes, setselectedSizes] = useState<Option[]>([]);
-  const [selectedColors, setselectedColors] = useState<Option[]>([]);
-  const [selectedProviders, setselectedProviders] = useState<Option[]>([]);
+  const [selectedTypes, ] = useState<Option[]>([]);
+  // const [selectedSizes, setselectedSizes] = useState<Option[]>([]);
+  // const [selectedColors, setselectedColors] = useState<Option[]>([]);
+  // const [selectedProviders, setselectedProviders] = useState<Option[]>([]);
 
-  const [selectedRows, setSelectedRows] = useState<string[]>([]);
+  // const [selectedRows, setSelectedRows] = useState<string[]>([]);
 
   const fetchProductsData = async () => {
     setLoading(true);

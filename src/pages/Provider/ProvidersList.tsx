@@ -111,7 +111,7 @@ function ProvidersList() {
     (sum, p) => sum + p.debtTotal,
     0
   );
-  const grandTotalPaid = grandTotalBuy - grandTotalDebt;
+  // const grandTotalPaid = grandTotalBuy - grandTotalDebt;
 
   const toggleRowExpand = (id: string) => {
     setExpandedRows((prev) =>
