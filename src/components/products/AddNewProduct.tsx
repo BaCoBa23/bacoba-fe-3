@@ -260,8 +260,8 @@ function AddNewProduct({
       };
 
       // 2. Log payload cuối cùng sẽ gửi lên Server
-      console.log("--- API Payload ---");
-      console.log(payload);
+      // console.log("--- API Payload ---");
+      // console.log(payload);
 
       await createProduct(payload);
 

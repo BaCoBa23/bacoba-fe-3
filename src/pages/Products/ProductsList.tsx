@@ -56,6 +56,7 @@ import {
   type GetProductsParams,
 } from "@/services/api";
 import { Skeleton } from "@/components/ui/skeleton";
+import EditVariantDialog from "@/components/products/EditVariantDialog";
 
 function ProductsList() {
   interface Option {
@@ -658,17 +659,20 @@ function ProductsList() {
                                   className="border-border"
                                 >
                                   <DropdownMenuItem
-                                    onClick={() =>
-                                      console.log("Edit variant", variant.id)
-                                    }
+                                    onSelect={(e) => {
+                                      e.preventDefault(); 
+                                    }}
                                   >
-                                    <Edit className="mr-2 h-4 w-4" /> Sửa biến
-                                    thể
+                                    
+                                    <EditVariantDialog
+                                      variant={variant}
+                                      onSuccess={fetchProductsData}
+                                    />
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                  {/* <DropdownMenuItem className="text-destructive focus:bg-destructive/10 focus:text-destructive">
                                     <Trash2 className="mr-2 h-4 w-4" /> Xóa biến
                                     thể
-                                  </DropdownMenuItem>
+                                  </DropdownMenuItem> */}
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </TableCell>

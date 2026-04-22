@@ -1,4 +1,12 @@
-import type { Attribute, AttributeType, Product, ProductType, Provider } from "@/types";
+import type {
+  Attribute,
+  AttributeType,
+  Bill,
+  BillProduct,
+  Product,
+  ProductType,
+  Provider,
+} from "@/types";
 import type { HistoryProvider } from "@/types/HistoryProvider";
 import type { ReceivedNote } from "@/types/ReceivedNote";
 import axios from "axios";
@@ -56,7 +64,6 @@ export interface GetProductsParams {
   order?: Record<string, "asc" | "desc">;
 }
 
-
 export interface ProductsApiResponse {
   success: boolean;
   message: string;
@@ -81,6 +88,7 @@ export const getProducts = async (params?: GetProductsParams) => {
   }
 };
 
+
 export interface ProductAttribute {
   id: string;
   value: string;
@@ -93,14 +101,14 @@ export interface CreateProductParams {
   initialPrice: number;
   salePrice: number;
   description: string;
-  attributes: ProductAttribute[][]; 
+  attributes: ProductAttribute[][];
 }
-
 
 export const createProduct = async (params?: CreateProductParams) => {
   try {
-    const response = await apiClient.post<ProductsApiResponse>("/products", 
-      params,
+    const response = await apiClient.post<ProductsApiResponse>(
+      "/products",
+      params
     );
     return response.data;
   } catch (error) {
@@ -108,6 +116,8 @@ export const createProduct = async (params?: CreateProductParams) => {
     throw error;
   }
 };
+
+
 
 // product Type
 export interface ProductTypesApiResponse {
@@ -118,12 +128,13 @@ export interface ProductTypesApiResponse {
 
 export interface CreateProductTypes {
   name: string;
-
 }
 
 export const getProductTypes = async () => {
   try {
-    const response = await apiClient.get<ProductTypesApiResponse>("/product-types");
+    const response = await apiClient.get<ProductTypesApiResponse>(
+      "/product-types"
+    );
     return response.data;
   } catch (error) {
     console.error("Error fetching products:", error);
@@ -131,9 +142,12 @@ export const getProductTypes = async () => {
   }
 };
 
-export const createProductType = async (params:CreateProductTypes) => {
+export const createProductType = async (params: CreateProductTypes) => {
   try {
-    const response = await apiClient.post<ProductTypesApiResponse>("/product-types",params);
+    const response = await apiClient.post<ProductTypesApiResponse>(
+      "/product-types",
+      params
+    );
     return response.data;
   } catch (error) {
     console.error("Error fetching products:", error);
@@ -141,9 +155,15 @@ export const createProductType = async (params:CreateProductTypes) => {
   }
 };
 
-export const editProductType = async (id:string,params:CreateProductTypes) => {
+export const editProductType = async (
+  id: string,
+  params: CreateProductTypes
+) => {
   try {
-    const response = await apiClient.put<ProductTypesApiResponse>(`/product-types/${id}`,params);
+    const response = await apiClient.put<ProductTypesApiResponse>(
+      `/product-types/${id}`,
+      params
+    );
     return response.data;
   } catch (error) {
     console.error("Error fetching products:", error);
@@ -159,12 +179,14 @@ export interface AttributeTypesApiResponse {
 }
 export interface CreateAttributeTypes {
   name: string;
-
 }
 
-export const createAttributeType = async (params:CreateAttributeTypes) => {
+export const createAttributeType = async (params: CreateAttributeTypes) => {
   try {
-    const response = await apiClient.post<AttributeTypesApiResponse>("/attribute-types",params);
+    const response = await apiClient.post<AttributeTypesApiResponse>(
+      "/attribute-types",
+      params
+    );
     return response.data;
   } catch (error) {
     console.error("Error fetching products:", error);
@@ -174,7 +196,9 @@ export const createAttributeType = async (params:CreateAttributeTypes) => {
 
 export const getAttributeTypes = async () => {
   try {
-    const response = await apiClient.get<AttributeTypesApiResponse>("/attribute-types");
+    const response = await apiClient.get<AttributeTypesApiResponse>(
+      "/attribute-types"
+    );
     return response.data;
   } catch (error) {
     console.error("Error fetching products:", error);
@@ -182,9 +206,15 @@ export const getAttributeTypes = async () => {
   }
 };
 
-export const editAttributeType = async (id:string,params:CreateAttributeTypes) => {
+export const editAttributeType = async (
+  id: string,
+  params: CreateAttributeTypes
+) => {
   try {
-    const response = await apiClient.put<ProductTypesApiResponse>(`/attribute-types/${id}`,params);
+    const response = await apiClient.put<ProductTypesApiResponse>(
+      `/attribute-types/${id}`,
+      params
+    );
     return response.data;
   } catch (error) {
     console.error("Error fetching products:", error);
@@ -219,17 +249,78 @@ export interface ReceivedNotesApiResponse {
     currentPage: number;
     pageSize: number;
     totalPages: number;
+    order?: Record<string, "asc" | "desc">;
   };
 }
 
-export const getReceivedNotes = async (params?:GetProductsParams) => {
+export interface ReceivedProductItem {
+  productId: string;
+  addQuantity: number;
+  discount: number;
+  description: string;
+  total: number;
+}
+
+export interface CreateReceivedNoteParams {
+  providerId: string;
+  phoneNumber: string;
+  description: string;
+  discount: number;
+  payedMoney: number;
+  debtMoney: number;
+  total: number;
+  status: "confirm" | "draft" | "cancelled";
+  receivedProducts: ReceivedProductItem[];
+}
+
+export const getReceivedNotes = async (params?: GetProductsParams) => {
   try {
     // Đổi AttributesApiResponse thành ReceivedNotesApiResponse
-    const response = await apiClient.get<ReceivedNotesApiResponse>("/received-notes",{params,});
+    const response = await apiClient.get<ReceivedNotesApiResponse>(
+      "/received-notes",
+      { params }
+    );
     return response.data;
   } catch (error) {
     // Cập nhật log lỗi cho đúng ngữ cảnh (Received Notes thay vì Products)
     console.error("Error fetching received notes:", error);
+    throw error;
+  }
+};
+
+export const createReceivedNote = async (params: CreateReceivedNoteParams) => {
+  try {
+    const response = await apiClient.post<ReceivedNotesApiResponse>(
+      "/received-notes",
+      params
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error creating received note:", error);
+    throw error;
+  }
+};
+
+export const confirmReceivedNote = async (id:string) => {
+  try {
+    const response = await apiClient.put<ReceivedNotesApiResponse>(
+      `/received-notes/${id}/confirm`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error confirm received note:", error);
+    throw error;
+  }
+};
+
+export const cancelReceivedNote = async (id:string) => {
+  try {
+    const response = await apiClient.put<ReceivedNotesApiResponse>(
+      `/received-notes/${id}/cancelled`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error cancel received note:", error);
     throw error;
   }
 };
@@ -251,16 +342,17 @@ export interface CreateProvidersParams {
   name: string;
   phoneNumber?: string | null;
   email?: string | null;
-  status: "active" | "inactive"; 
+  status: "active" | "inactive";
   debtTotal: number;
   total: number;
 }
 
-
-export const getProviders = async (params?:GetProductsParams) => {
+export const getProviders = async (params?: GetProductsParams) => {
   try {
     // Đổi AttributesApiResponse thành ReceivedNotesApiResponse
-    const response = await apiClient.get<ProvidersApiResponse>("/providers",{params});
+    const response = await apiClient.get<ProvidersApiResponse>("/providers", {
+      params,
+    });
     return response.data;
   } catch (error) {
     // Cập nhật log lỗi cho đúng ngữ cảnh (Received Notes thay vì Products)
@@ -269,10 +361,13 @@ export const getProviders = async (params?:GetProductsParams) => {
   }
 };
 
-export const createProviders = async (params?:CreateProvidersParams) => {
+export const createProviders = async (params?: CreateProvidersParams) => {
   try {
     // Đổi AttributesApiResponse thành ReceivedNotesApiResponse
-    const response = await apiClient.post<ProvidersApiResponse>("/providers",params);
+    const response = await apiClient.post<ProvidersApiResponse>(
+      "/providers",
+      params
+    );
     return response.data;
   } catch (error) {
     // Cập nhật log lỗi cho đúng ngữ cảnh (Received Notes thay vì Products)
@@ -281,9 +376,15 @@ export const createProviders = async (params?:CreateProvidersParams) => {
   }
 };
 
-export const editProviders = async (id:string,params:CreateProvidersParams) => {
+export const editProviders = async (
+  id: string,
+  params: CreateProvidersParams
+) => {
   try {
-    const response = await apiClient.put<ProductTypesApiResponse>(`/providers/${id}`,params);
+    const response = await apiClient.put<ProductTypesApiResponse>(
+      `/providers/${id}`,
+      params
+    );
     return response.data;
   } catch (error) {
     console.error("Error fetching provider:", error);
@@ -298,44 +399,98 @@ export interface HistoryProvidersApiResponse {
   data: HistoryProvider[];
 }
 
-export interface CreateHistoryProvidersParams 
-  {
-    providerId: string;
-    paidAmount: number;
-    description?: string | null ;
-    status?: "active"| "inactive";
+export interface CreateHistoryProvidersParams {
+  providerId: string;
+  paidAmount: number;
+  description?: string | null;
+  status?: "active" | "inactive";
+}
+
+export const getHistoryProviders = async () => {
+  try {
+    const response = await apiClient.get<HistoryProvidersApiResponse>(
+      "/history-providers"
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching history providers:", error);
+    throw error;
   }
+};
 
+export const createHistoryProviders = async (
+  params: CreateHistoryProvidersParams
+) => {
+  try {
+    const response = await apiClient.post<HistoryProvidersApiResponse>(
+      "/history-providers",
+      params
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error creating history provider:", error);
+    throw error;
+  }
+};
 
+export const editHistoryProviders = async (
+  id: string,
+  params: CreateHistoryProvidersParams
+) => {
+  try {
+    const response = await apiClient.put<HistoryProvidersApiResponse>(
+      `/history-providers/${id}`,
+      params
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error updating history provider:", error);
+    throw error;
+  }
+};
 
-  export const getHistoryProviders = async () => {
-    try {
-      const response = await apiClient.get<HistoryProvidersApiResponse>("/history-providers");
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching history providers:", error);
-      throw error;
-    }
+export interface BillsApiResponse {
+  success: boolean;
+  message: string;
+  data: Bill[];
+  meta: {
+    totalItems: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
   };
-  
-  export const createHistoryProviders = async (params: CreateHistoryProvidersParams) => {
-    try {
-      const response = await apiClient.post<HistoryProvidersApiResponse>("/history-providers", params);
-      return response.data;
-    } catch (error) {
-      console.error("Error creating history provider:", error);
-      throw error;
-    }
-  };
-  
-  export const editHistoryProviders = async (id: string, params: CreateHistoryProvidersParams) => {
-    try {
-      const response = await apiClient.put<HistoryProvidersApiResponse>(`/history-providers/${id}`, params);
-      return response.data;
-    } catch (error) {
-      console.error("Error updating history provider:", error);
-      throw error;
-    }
-  };
+}
+
+export const getBills = async (params?: GetProductsParams) => {
+  try {
+    // Đổi AttributesApiResponse thành ReceivedNotesApiResponse
+    const response = await apiClient.get<BillsApiResponse>("/bills", {
+      params,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching bills :", error);
+    throw error;
+  }
+};
+
+export interface BillProductsApiResponse {
+  success: boolean;
+  message: string;
+  data: BillProduct[];
+}
+
+export const getBillProducts = async () => {
+  try {
+    const response = await apiClient.get<BillProductsApiResponse>(
+      "/bill-products"
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching bill products:", error);
+    throw error;
+  }
+};
+
 
 export default apiClient;

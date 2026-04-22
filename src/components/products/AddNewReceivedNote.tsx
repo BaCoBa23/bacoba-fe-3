@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from "react";
+import React, { useMemo, useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -36,6 +36,13 @@ import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Plus, Trash2, PackagePlus, ArrowRight, Save } from "lucide-react";
+import {
+  createReceivedNote,
+  getProviders,
+  type CreateReceivedNoteParams,
+} from "@/services/api";
+import { toast } from "sonner";
+import type { Provider } from "@/types";
 
 interface SelectedProduct {
   id: string;
@@ -46,6 +53,7 @@ interface SelectedProduct {
 
 interface AddNewReceivedNoteProps {
   selectedProducts: SelectedProduct[];
+  onSuccess?: () => void;
 }
 
 const formatDisplay = (val: number | string) => {
@@ -79,7 +87,34 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export function AddNewReceivedNote({ selectedProducts }: AddNewReceivedNoteProps) {
+export function AddNewReceivedNote({
+  selectedProducts,
+  onSuccess,
+}: AddNewReceivedNoteProps) {
+  const [open, setOpen] = useState(false);
+  const [providers, setProviders] = useState<Provider[]>([]);
+
+  const fetchData = async () => {
+    try {
+      const [provRes] = await Promise.all([
+        getProviders({
+          search: "",
+          page: 1,
+          pageSize: 1000,
+        } as any),
+      ]);
+
+      if (provRes.success) {
+        setProviders(provRes.data);
+      }
+    } catch (error) {
+      console.error("Lỗi khi tải dữ liệu:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -131,25 +166,95 @@ export function AddNewReceivedNote({ selectedProducts }: AddNewReceivedNoteProps
     if (e.key === "Enter") e.preventDefault();
   };
 
-  const onSaveDraft = () => {
+  const onSaveDraft = async () => {
     const data = getValues();
-    console.log("Save Draft:", { ...data, ...totals, status: "DRAFT" });
-    // Thêm logic xử lý lưu nháp ở đây (ví dụ: API call hoặc local storage)
+    // Validate sơ bộ vì lưu nháp thường không bắt buộc validate hết zod
+    if (!data.providerId) {
+      toast.error("Vui lòng chọn nhà cung cấp để lưu nháp");
+      return;
+    }
+
+    try {
+      const apiParams: CreateReceivedNoteParams = {
+      providerId: data.providerId,
+      phoneNumber: "",
+      description: data.description || "",
+      discount: data.totalDiscount,
+      payedMoney: data.paidAmount,
+      debtMoney: totals.debt,
+      total: totals.totalAmount,
+      status: "draft",
+      receivedProducts: data.receivedProducts.map((p) => ({
+        productId: p.id,
+        addQuantity: p.addQuantity,
+        discount: p.discount,
+        description: p.name,
+        total: (p.price - p.discount) * p.addQuantity,
+      })),
+    };
+
+      await createReceivedNote(apiParams);
+      toast.info("Đã lưu bản nháp");
+      if (onSuccess) {
+        onSuccess();
+      }
+      form.reset(); // Xóa trắng form sau khi tạo thành công
+        // Thêm logic đóng Dialog hoặc điều hướng nếu cần
+        setOpen(false);
+    } catch (error) {
+      toast.error("Không thể lưu nháp");
+    }
   };
 
-  const onSubmit = (data: FormValues) => {
-    console.log("Submit Final:", { ...data, ...totals, status: "COMPLETED" });
+  const onSubmit = async (data: FormValues) => {
+    try {
+      // 1. Mapping dữ liệu từ form sang params API
+      const apiParams: CreateReceivedNoteParams = {
+        providerId: data.providerId, // Chuyển từ string sang number nếu backend yêu cầu
+        phoneNumber: "", // Bạn có thể lấy từ object provider nếu có dữ liệu NCC
+        description: data.description || "",
+        discount: data.totalDiscount,
+        payedMoney: data.paidAmount,
+        debtMoney: totals.debt,
+        total: totals.totalAmount,
+        status: "confirm", // Trạng thái mặc định khi nhấn Xác nhận
+        receivedProducts: data.receivedProducts.map((p) => ({
+          productId: p.id,
+          addQuantity: p.addQuantity,
+          discount: p.discount,
+          description: p.name,
+          total: (p.price - p.discount) * p.addQuantity,
+        })),
+      };
+
+      // 2. Gọi API
+      const response = await createReceivedNote(apiParams);
+
+      if (response.success) {
+        toast.success("Tạo phiếu nhập hàng thành công!");
+        if (onSuccess) {
+          onSuccess();
+        }
+        form.reset(); // Xóa trắng form sau khi tạo thành công
+        // Thêm logic đóng Dialog hoặc điều hướng nếu cần
+        setOpen(false);
+      }
+    } catch (error) {
+      console.error("Lỗi khi tạo phiếu:", error);
+      toast.error("Có lỗi xảy ra khi gửi yêu cầu. Vui lòng kiểm tra lại.");
+    }
   };
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
           variant="outline"
           className="border-primary text-primary hover:bg-primary/10 transition-colors"
           disabled={selectedProducts.length <= 0}
         >
-          Nhập hàng {selectedProducts.length > 0 && `(${selectedProducts.length})`}
+          Nhập hàng{" "}
+          {selectedProducts.length > 0 && `(${selectedProducts.length})`}
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </DialogTrigger>
@@ -162,9 +267,9 @@ export function AddNewReceivedNote({ selectedProducts }: AddNewReceivedNoteProps
         </DialogHeader>
 
         <Form {...form}>
-          <form 
-            onSubmit={handleSubmit(onSubmit)} 
-            className="flex flex-1 min-h-0 overflow-hidden" 
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="flex flex-1 min-h-0 overflow-hidden"
             onKeyDown={handleKeyDown}
           >
             {/* LEFT SIDE: Danh sách sản phẩm */}
@@ -186,49 +291,95 @@ export function AddNewReceivedNote({ selectedProducts }: AddNewReceivedNoteProps
                       <Table>
                         <TableHeader className="bg-muted/50 sticky top-0 z-10 shadow-sm">
                           <TableRow className="border-b border-border">
-                            <TableHead className="w-12 text-center font-bold">STT</TableHead>
+                            <TableHead className="w-12 text-center font-bold">
+                              STT
+                            </TableHead>
                             <TableHead className="font-bold">Mã hàng</TableHead>
-                            <TableHead className="w-[300px] font-bold">Tên hàng</TableHead>
-                            <TableHead className="text-right font-bold">Số lượng</TableHead>
-                            <TableHead className="text-right font-bold">Đơn giá</TableHead>
-                            <TableHead className="text-right font-bold">Giảm giá</TableHead>
-                            <TableHead className="text-right font-bold">Thành tiền</TableHead>
+                            <TableHead className="w-[300px] font-bold">
+                              Tên hàng
+                            </TableHead>
+                            <TableHead className="text-right font-bold">
+                              Số lượng
+                            </TableHead>
+                            <TableHead className="text-right font-bold">
+                              Đơn giá
+                            </TableHead>
+                            <TableHead className="text-right font-bold">
+                              Giảm giá
+                            </TableHead>
+                            <TableHead className="text-right font-bold">
+                              Thành tiền
+                            </TableHead>
                             <TableHead className="w-10"></TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {fields.map((field, index) => {
                             const row = watchedProducts?.[index];
-                            const rowTotal = ((row?.price || 0) - (row?.discount || 0)) * (row?.addQuantity || 0);
+                            const rowTotal =
+                              ((row?.price || 0) - (row?.discount || 0)) *
+                              (row?.addQuantity || 0);
                             return (
-                              <TableRow key={field.id} className="border-b border-border hover:bg-muted/5">
-                                <TableCell className="text-center text-muted-foreground">{index + 1}</TableCell>
-                                <TableCell className="font-bold text-primary">{row?.id.slice(0, 8)}</TableCell>
-                                <TableCell className="font-medium">{field.name}</TableCell>
+                              <TableRow
+                                key={field.id}
+                                className="border-b border-border hover:bg-muted/5"
+                              >
+                                <TableCell className="text-center text-muted-foreground">
+                                  {index + 1}
+                                </TableCell>
+                                <TableCell className="font-bold text-primary">
+                                  {row?.id.slice(0, 8)}
+                                </TableCell>
+                                <TableCell className="font-medium">
+                                  {field.name}
+                                </TableCell>
                                 <TableCell>
                                   <Input
                                     value={formatDisplay(row?.addQuantity ?? 0)}
-                                    onChange={(e) => setValue(`receivedProducts.${index}.addQuantity`, parseNumber(e.target.value))}
+                                    onChange={(e) =>
+                                      setValue(
+                                        `receivedProducts.${index}.addQuantity`,
+                                        parseNumber(e.target.value)
+                                      )
+                                    }
                                     className="w-20 ml-auto text-right"
                                   />
                                 </TableCell>
                                 <TableCell>
                                   <Input
                                     value={formatDisplay(row?.price ?? 0)}
-                                    onChange={(e) => setValue(`receivedProducts.${index}.price`, parseNumber(e.target.value))}
+                                    onChange={(e) =>
+                                      setValue(
+                                        `receivedProducts.${index}.price`,
+                                        parseNumber(e.target.value)
+                                      )
+                                    }
                                     className="w-28 ml-auto text-right font-medium"
                                   />
                                 </TableCell>
                                 <TableCell>
                                   <Input
                                     value={formatDisplay(row?.discount ?? 0)}
-                                    onChange={(e) => setValue(`receivedProducts.${index}.discount`, parseNumber(e.target.value))}
+                                    onChange={(e) =>
+                                      setValue(
+                                        `receivedProducts.${index}.discount`,
+                                        parseNumber(e.target.value)
+                                      )
+                                    }
                                     className="w-24 ml-auto text-right"
                                   />
                                 </TableCell>
-                                <TableCell className="text-right font-bold">{formatDisplay(rowTotal)}</TableCell>
+                                <TableCell className="text-right font-bold">
+                                  {formatDisplay(rowTotal)}
+                                </TableCell>
                                 <TableCell>
-                                  <Button variant="ghost" size="icon" type="button" onClick={() => remove(index)} className="hover:text-destructive">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    type="button"
+                                    onClick={() => remove(index)}
+                                    className="hover:text-destructive"
+                                  >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </TableCell>
@@ -254,14 +405,34 @@ export function AddNewReceivedNote({ selectedProducts }: AddNewReceivedNoteProps
                         name="providerId"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="font-bold text-foreground">Nhà cung cấp</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormLabel className="font-bold text-foreground">
+                              Nhà cung cấp
+                            </FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                            >
                               <FormControl>
-                                <SelectTrigger className="bg-background"><SelectValue placeholder="Chọn NCC" /></SelectTrigger>
+                                <SelectTrigger className="bg-background">
+                                  <SelectValue placeholder="Chọn nhà cung cấp" />
+                                </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="PROV-001">Công ty Quần</SelectItem>
-                                <SelectItem value="PROV-002">Công ty Áo</SelectItem>
+                                {/* Lặp qua danh sách providers từ API */}
+                                {providers.length > 0 ? (
+                                  providers.map((prov) => (
+                                    <SelectItem
+                                      key={prov.id}
+                                      value={prov.id.toString()}
+                                    >
+                                      {prov.name}
+                                    </SelectItem>
+                                  ))
+                                ) : (
+                                  <div className="p-2 text-sm text-muted-foreground text-center">
+                                    Đang tải danh sách...
+                                  </div>
+                                )}
                               </SelectContent>
                             </Select>
                           </FormItem>
@@ -272,9 +443,15 @@ export function AddNewReceivedNote({ selectedProducts }: AddNewReceivedNoteProps
                         name="createdAt"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="font-bold text-foreground">Ngày giờ nhập</FormLabel>
+                            <FormLabel className="font-bold text-foreground">
+                              Ngày giờ nhập
+                            </FormLabel>
                             <FormControl>
-                              <Input type="datetime-local" {...field} className="bg-background" />
+                              <Input
+                                type="datetime-local"
+                                {...field}
+                                className="bg-background"
+                              />
                             </FormControl>
                           </FormItem>
                         )}
@@ -285,8 +462,12 @@ export function AddNewReceivedNote({ selectedProducts }: AddNewReceivedNoteProps
 
                     <div className="space-y-4">
                       <div className="flex justify-between items-center text-sm">
-                        <span className="text-muted-foreground">Tổng tiền hàng:</span>
-                        <span className="font-semibold">{formatDisplay(totals.subTotal)}</span>
+                        <span className="text-muted-foreground">
+                          Tổng tiền hàng:
+                        </span>
+                        <span className="font-semibold">
+                          {formatDisplay(totals.subTotal)}
+                        </span>
                       </div>
 
                       <FormField
@@ -294,11 +475,15 @@ export function AddNewReceivedNote({ selectedProducts }: AddNewReceivedNoteProps
                         name="totalDiscount"
                         render={({ field }) => (
                           <FormItem className="flex items-center justify-between space-y-0 gap-4">
-                            <FormLabel className="text-muted-foreground text-sm">Giảm giá phiếu:</FormLabel>
+                            <FormLabel className="text-muted-foreground text-sm">
+                              Giảm giá phiếu:
+                            </FormLabel>
                             <Input
                               className="w-36 text-right text-destructive bg-background h-8"
                               value={formatDisplay(field.value ?? 0)}
-                              onChange={(e) => field.onChange(parseNumber(e.target.value))}
+                              onChange={(e) =>
+                                field.onChange(parseNumber(e.target.value))
+                              }
                             />
                           </FormItem>
                         )}
@@ -306,7 +491,9 @@ export function AddNewReceivedNote({ selectedProducts }: AddNewReceivedNoteProps
 
                       <div className="flex justify-between items-center py-3 border-y border-dashed border-border bg-muted/20 px-2 rounded-sm">
                         <span className="font-bold text-sm">CẦN TRẢ:</span>
-                        <span className="font-bold text-xl text-primary">{formatDisplay(totals.totalAmount)}</span>
+                        <span className="font-bold text-xl text-primary">
+                          {formatDisplay(totals.totalAmount)}
+                        </span>
                       </div>
 
                       <FormField
@@ -314,19 +501,31 @@ export function AddNewReceivedNote({ selectedProducts }: AddNewReceivedNoteProps
                         name="paidAmount"
                         render={({ field }) => (
                           <FormItem className="flex items-center justify-between space-y-0 gap-4 pt-2">
-                            <FormLabel className="font-bold text-sm">THANH TOÁN:</FormLabel>
+                            <FormLabel className="font-bold text-sm">
+                              THANH TOÁN:
+                            </FormLabel>
                             <Input
                               className="w-36 text-right font-bold text-primary border-primary/50"
                               value={formatDisplay(field.value ?? 0)}
-                              onChange={(e) => field.onChange(parseNumber(e.target.value))}
+                              onChange={(e) =>
+                                field.onChange(parseNumber(e.target.value))
+                              }
                             />
                           </FormItem>
                         )}
                       />
 
                       <div className="flex justify-between items-center pt-1">
-                        <span className="text-muted-foreground text-xs font-semibold uppercase">Tiền nợ công:</span>
-                        <span className={`font-bold ${totals.debt > 0 ? "text-destructive" : "text-primary"}`}>
+                        <span className="text-muted-foreground text-xs font-semibold uppercase">
+                          Tiền nợ công:
+                        </span>
+                        <span
+                          className={`font-bold ${
+                            totals.debt > 0
+                              ? "text-destructive"
+                              : "text-primary"
+                          }`}
+                        >
                           {formatDisplay(totals.debt)}
                         </span>
                       </div>
@@ -339,7 +538,9 @@ export function AddNewReceivedNote({ selectedProducts }: AddNewReceivedNoteProps
                       name="description"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="font-bold text-sm">Ghi chú phiếu</FormLabel>
+                          <FormLabel className="font-bold text-sm">
+                            Ghi chú phiếu
+                          </FormLabel>
                           <FormControl>
                             <textarea
                               className="w-full min-h-[80px] p-2 rounded-md border border-input bg-background text-sm focus:ring-1 focus:ring-primary outline-none resize-none"
@@ -353,20 +554,20 @@ export function AddNewReceivedNote({ selectedProducts }: AddNewReceivedNoteProps
                   </div>
                 </ScrollArea>
               </div>
-              
+
               <div className="p-4 border-t border-border bg-background shrink-0 space-y-2">
                 <div className="flex gap-2">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={onSaveDraft}
                     className="flex-1 border-primary text-primary hover:bg-primary/50 font-bold py-6"
                   >
                     <Save className="mr-2 h-5 w-5" />
                     LƯU NHÁP
                   </Button>
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     className="flex-[2] bg-primary text-primary-foreground hover:bg-primary/90 font-bold py-6 text-lg shadow-lg"
                   >
                     XÁC NHẬN NHẬP

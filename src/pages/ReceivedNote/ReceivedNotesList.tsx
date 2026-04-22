@@ -14,6 +14,7 @@ import {
 import {
   // ArrowRight,
   Barcode,
+  CheckCircle2,
   ChevronDown,
   ChevronRight,
   // Edit,
@@ -31,9 +32,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 // Import từ file mock data của bạn
-import { MOCK_RECEIVED_NOTES } from "@/types/ReceivedNote";
+import { type ReceivedNote } from "@/types/ReceivedNote";
 // import {
 //   DropdownMenu,
 //   DropdownMenuContent,
@@ -44,6 +45,12 @@ import { MOCK_RECEIVED_NOTES } from "@/types/ReceivedNote";
 // } from "@/components/ui/dropdown-menu";
 import TagCombobox from "@/components/ui/TagCombobox";
 import { EditReceivedNote } from "@/components/products/EditReceivedNote";
+import {
+  cancelReceivedNote,
+  confirmReceivedNote,
+  getReceivedNotes,
+} from "@/services/api";
+import { toast } from "sonner";
 
 function ReceivedNotesList() {
   interface Option {
@@ -52,26 +59,70 @@ function ReceivedNotesList() {
   }
 
   const statusOptions: Option[] = [
-    { id: "completed", name: "Đã nhập" },
+    { id: "confirm", name: "Đã nhập" },
     { id: "draft", name: "Nháp" },
     { id: "cancelled", name: "Hủy" },
   ];
 
+  // 1. Khai báo state cho API
+  const [receivedNotes, setReceivedNote] = useState<ReceivedNote[]>([]);
+  const [meta, setMeta] = useState({
+    totalItems: 0,
+    currentPage: 1,
+    pageSize: 10,
+    totalPages: 1,
+  });
+  const [isLoading, setIsLoading] = useState(false);
+
+  // 2. State cho Filter & UI
   const [selectedStatus, setSelectedStatus] = useState<Option[]>([]);
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // 3. Hàm gọi API
+  const fetchNotes = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      // Chuẩn bị params (Dựa trên GetProductsParams trong file service của bạn)
+      const params = {
+        page: meta.currentPage,
+        pageSize: meta.pageSize,
+        search: searchQuery || undefined,
+        // Nếu API hỗ trợ status filter qua query string:
+        status: selectedStatus.length > 0 ? selectedStatus[0].id : undefined,
+        order: {
+          createdAt: "desc" as const,
+        },
+      };
+
+      const response = await getReceivedNotes(params);
+      if (response.success) {
+        setReceivedNote(response.data);
+        setMeta(response.meta);
+      }
+    } catch (error) {
+      console.error("Lỗi khi tải danh sách phiếu nhập:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [meta.currentPage, meta.pageSize, searchQuery, selectedStatus]);
+
+  // Gọi API khi có thay đổi params
+  useEffect(() => {
+    fetchNotes();
+  }, [fetchNotes]);
+
   // Logic lọc dữ liệu dựa trên trạng thái và tìm kiếm
-  const filteredNotes = MOCK_RECEIVED_NOTES.filter((note) => {
-    const matchesStatus =
-      selectedStatus.length === 0 ||
-      selectedStatus.some((s) => s.id === note.status);
-    const matchesSearch = note.id
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
-    return matchesStatus && matchesSearch;
-  });
+  // const receivedNotes = receivedNotes.filter((note) => {
+  //   const matchesStatus =
+  //     selectedStatus.length === 0 ||
+  //     selectedStatus.some((s) => s.id === note.status);
+  //   const matchesSearch = note.id
+  //     .toLowerCase()
+  //     .includes(searchQuery.toLowerCase());
+  //   return matchesStatus && matchesSearch;
+  // });
 
   const toggleRowExpand = (id: string) => {
     setExpandedRows((prev) =>
@@ -90,6 +141,32 @@ function ReceivedNotesList() {
     }
   };
 
+  // --- LOGIC XỬ LÝ API MỚI ---
+  const handleConfirm = async (id: string) => {
+    if (!confirm("Bạn có chắc chắn muốn xác nhận nhập kho phiếu này?")) return;
+    try {
+      await confirmReceivedNote(id);
+      toast.success("Xác nhận nhập kho thành công");
+      fetchNotes(); // Reload dữ liệu
+    } catch (error) {
+      toast.error("Không thể xác nhận phiếu nhập");
+    }
+  };
+
+  const handleCancel = async (id: string) => {
+    if (
+      !confirm("Bạn có chắc chắn muốn hủy phiếu nhập này? (Thao tác Trả hàng)")
+    )
+      return;
+    try {
+      await cancelReceivedNote(id);
+      toast.success("Đã hủy phiếu nhập thành công");
+      fetchNotes(); // Reload dữ liệu
+    } catch (error) {
+      toast.error("Không thể hủy phiếu nhập");
+    }
+  };
+
   // const handleSelectSubItem = (itemId: string) => {
   //   setSelectedRows((prev) =>
   //     prev.includes(itemId)
@@ -98,9 +175,21 @@ function ReceivedNotesList() {
   //   );
   // };
 
+  // const formatVietnameseDate = (dateSource: string | Date) => {
+  //   if (!dateSource) return "N/A";
+  //   const date = new Date(dateSource);
+  //   return date.toLocaleString("vi-VN", {
+  //     day: "2-digit",
+  //     month: "2-digit",
+  //     year: "numeric",
+  //     hour: "2-digit",
+  //     minute: "2-digit",
+  //     second: "2-digit",
+  //   });
+  // };
   const getStatusStyle = (status: string) => {
     switch (status) {
-      case "completed":
+      case "confirm":
         return "text-green-600 bg-green-50 px-2 py-1 rounded-full text-xs font-semibold";
       case "draft":
         return "text-blue-600 bg-blue-50 px-2 py-1 rounded-full text-xs font-semibold";
@@ -156,12 +245,12 @@ function ReceivedNotesList() {
               <TableHead className="w-[50px]">
                 <Checkbox
                   checked={
-                    filteredNotes.length > 0 &&
-                    filteredNotes.every((n) => selectedRows.includes(n.id))
+                    receivedNotes.length > 0 &&
+                    receivedNotes.every((n) => selectedRows.includes(n.id))
                   }
                   onCheckedChange={(checked) => {
                     if (checked) {
-                      const allIds = filteredNotes.flatMap((n) => [
+                      const allIds = receivedNotes.flatMap((n) => [
                         n.id,
                         ...(n.receivedProducts?.map((p) => p.id) || []),
                       ]);
@@ -169,7 +258,7 @@ function ReceivedNotesList() {
                         Array.from(new Set([...selectedRows, ...allIds]))
                       );
                     } else {
-                      const currentIds = filteredNotes.flatMap((n) => [
+                      const currentIds = receivedNotes.flatMap((n) => [
                         n.id,
                         ...(n.receivedProducts?.map((p) => p.id) || []),
                       ]);
@@ -195,7 +284,7 @@ function ReceivedNotesList() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredNotes.map((note) => {
+            {receivedNotes.map((note) => {
               const productIds = note.receivedProducts?.map((p) => p.id) || [];
               const isNoteSelected = selectedRows.includes(note.id);
               const isExpanded = expandedRows.includes(note.id);
@@ -228,10 +317,16 @@ function ReceivedNotesList() {
                       />
                     </TableCell>
                     <TableCell className="text-sm font-medium">
-                      {note.id}
+                      PN-{note.id}
                     </TableCell>
                     <TableCell className="text-sm">
-                      {note.createdAt.toLocaleString("vi-VN")}
+                      {new Date(note.createdAt).toLocaleString("vi-VN", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </TableCell>
                     <TableCell className="text-right">
                       {note.provider?.name || "N/A"}
@@ -287,7 +382,16 @@ function ReceivedNotesList() {
                                 Ngày nhập:
                               </span>
                               <span className="text-foreground">
-                                {note.createdAt.toLocaleString("vi-VN")}
+                                {new Date(note.createdAt).toLocaleString(
+                                  "vi-VN",
+                                  {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )}
                               </span>
                             </div>
                             <div className="flex justify-between border-b border-border py-1">
@@ -403,27 +507,52 @@ function ReceivedNotesList() {
                                     onClick={() => {
                                       /* Logic in mã vạch */
                                     }}
+                                    disabled={note.status!=="confirm"}
                                   >
                                     <Barcode className="w-4 h-4" />
                                     In mã vạch
                                   </Button>
 
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="flex items-center gap-2 text-destructive hover:text-destructive"
-                                    onClick={() => {
-                                      /* Logic trả hàng */
-                                    }}
-                                  >
-                                    <Undo2 className="w-4 h-4" />
-                                    Trả hàng
-                                  </Button>
+                                  {/* Nút Nhập hàng: Chỉ hiện khi trạng thái là draft */}
+                                  {note.status === "draft" && (
+                                    <Button
+                                      variant="default"
+                                      size="sm"
+                                      className="flex items-center gap-2 bg-chart-4 hover:bg-chart-4/60"
+                                      onClick={() => handleConfirm(note.id)}
+                                     
 
+                                    >
+                                      <CheckCircle2 className="w-4 h-4" />
+                                      Chấp nhận
+                                    </Button>
+                                  )}
+
+                                  {/* Nút Trả hàng: Chỉ hiện khi trạng thái là confirm */}
                                   
-                                  <EditReceivedNote
-                                    receivedNote={note}
-                                  />
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="flex items-center gap-2 text-destructive border-destructive hover:bg-destructive/10"
+                                      onClick={() => handleCancel(note.id)}
+                                      disabled={note.status==="cancelled"}
+                                    >
+                                      <Undo2 className="w-4 h-4" />
+                                      Hủy
+                                    </Button>
+                               
+
+                                  {/* Nút Sửa: Disable nếu đã hủy */}
+                                  <div
+                                    className={
+                                      note.status === "cancelled"
+                                        ? "pointer-events-none opacity-50"
+                                        : ""
+                                    }
+                                  >
+                                    <EditReceivedNote receivedNote={note} />
+                                  </div>
+                                 
                                 </div>
                               </TableBody>
                             </Table>
