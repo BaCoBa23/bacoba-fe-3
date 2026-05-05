@@ -55,7 +55,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Product } from "@/types";
-import { getProducts } from "@/services/api";
+import { getProducts, updateBill } from "@/services/api";
 
 // --- Helpers ---
 const formatDisplay = (val: number | string) => {
@@ -291,15 +291,47 @@ export function EditBill({
   const handleFinalSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
     try {
-      // Giả lập API call
-      console.log("Saving Bill Data:", data);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Map form data sang format API
+      const billProductsData = data.billItems.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        salePrice: item.unitPrice,
+        total: item.quantity * item.unitPrice,
+      }));
 
-      toast.success("Cập nhật hóa đơn thành công");
-      setOpen(false);
-      onSuccess?.();
-    } catch (error) {
-      toast.error("Lỗi khi lưu dữ liệu");
+      const subTotal = data.billItems.reduce(
+        (sum, item) => sum + item.unitPrice * item.quantity,
+        0
+      );
+      const totalAmount = Math.max(0, subTotal - data.totalDiscount);
+
+      const updatePayload = {
+        name: bill?.name || `Hóa đơn ${bill?.id}`,
+        customerName: data.customerName,
+        phoneNumber: data.phoneNumber || "",
+        discount: data.totalDiscount,
+        total: totalAmount,
+        status: bill?.status || "pending",
+        billProducts: billProductsData,
+      };
+
+      // Gọi API thực
+      const response = await updateBill(bill.id, updatePayload);
+
+      if (response.success) {
+        toast.success("Cập nhật hóa đơn thành công");
+        setOpen(false);
+        onSuccess?.();
+      } else {
+        toast.error(response.message || "Lỗi khi lưu dữ liệu");
+      }
+    } catch (error: any) {
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Lỗi khi lưu dữ liệu";
+      toast.error(errorMsg);
+      console.error("Error updating bill:", error);
     } finally {
       setIsSubmitting(false);
     }

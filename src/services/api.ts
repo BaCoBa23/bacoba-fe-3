@@ -623,6 +623,19 @@ export const createBill = async (data: CreateBillParams) => {
   }
 };
 
+export const updateBill = async (billId: string | number, data: CreateBillParams) => {
+  try {
+    const response = await apiClient.put<CreateBillResponse>(
+      `/bills/${billId}`,
+      data
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error updating bill:", error);
+    throw error;
+  }
+};
+
 export interface BillProductsApiResponse {
   success: boolean;
   message: string;
