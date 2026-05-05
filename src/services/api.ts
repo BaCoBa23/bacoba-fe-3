@@ -591,6 +591,7 @@ export interface CreateBillParams {
   discount: number;
   total: number;
   status: string;
+  createdAt?: string;
   billProducts: CreateBillProductParam[];
 }
 

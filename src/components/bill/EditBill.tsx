@@ -312,6 +312,7 @@ export function EditBill({
         discount: data.totalDiscount,
         total: totalAmount,
         status: bill?.status || "pending",
+        createdAt: data.createdAt ? new Date(data.createdAt).toISOString() : undefined,
         billProducts: billProductsData,
       };
 
