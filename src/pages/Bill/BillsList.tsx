@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import {
   Pagination,
   PaginationContent,
-  PaginationEllipsis,
+  // PaginationEllipsis,
   PaginationItem,
   PaginationLink,
   PaginationNext,
@@ -15,9 +15,9 @@ import {
   ChevronDown,
   ChevronRight,
   Undo2,
-  FileText,
+  // FileText,
   ArrowRightLeft,
-  RotateCcw,
+  // RotateCcw,
 } from "lucide-react";
 import {
   Table,
@@ -29,10 +29,74 @@ import {
 } from "@/components/ui/table";
 import React, { useEffect, useState } from "react";
 import TagCombobox from "@/components/ui/TagCombobox";
-import { getBills, type BillsApiResponse } from "@/services/api";
+import { getBills, returnBill } from "@/services/api";
 import type { Bill } from "@/types";
 import { ExchangeBill } from "@/components/bill/ExchangeBill";
 import { EditBill } from "@/components/bill/EditBill";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+
+
+const TableSkeleton = () => {
+  return (
+    <>
+      {[...Array(10)].map((_, i) => (
+        <TableRow key={i}>
+          {/* 1. Nút mở rộng */}
+          <TableCell><Skeleton className="h-4 w-4" /></TableCell>
+          
+          {/* 2. Checkbox */}
+          <TableCell><Skeleton className="h-4 w-4" /></TableCell>
+          
+          {/* 3. Mã hóa đơn */}
+          <TableCell>
+            <div className="flex flex-col gap-1">
+               <Skeleton className="h-5 w-20" />
+               {/* Giả lập dòng "Đổi từ..." nếu cần */}
+            </div>
+          </TableCell>
+          
+          {/* 4. Thời gian */}
+          <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+          
+          {/* 5. Khách hàng */}
+          <TableCell>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-3 w-20" />
+            </div>
+          </TableCell>
+          
+          {/* 6. Tổng tiền (Cần căn phải cho khớp TableHead) */}
+          <TableCell className="text-right">
+            <Skeleton className="h-5 w-20 ml-auto" />
+          </TableCell>
+          
+          {/* 7. Trạng thái (Căn giữa) */}
+          <TableCell>
+            <Skeleton className="h-6 w-24 mx-auto rounded-full" />
+          </TableCell>
+          
+          {/* 8. Thao tác (Căn phải) */}
+          <TableCell className="text-right pr-6">
+            <Skeleton className="h-8 w-8 ml-auto rounded-md" />
+          </TableCell>
+        </TableRow>
+      ))}
+    </>
+  );
+};
 
 function BillsList() {
   interface Option {
@@ -52,9 +116,12 @@ function BillsList() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const [bills, setBills] = useState<Bill[]>([]);
-  const [, setLoading] = useState(true);
-  const [, setMeta] = useState<BillsApiResponse["meta"] | null>(null);
+  const [loading, setLoading] = useState(false);
+
   const [currentPage, setCurrentPage] = useState(1);
+
+  // 1. Thêm state để lưu thông tin phân trang từ API
+  const [totalPages, setTotalPages] = useState(1);
 
   const fetchBills = async () => {
     try {
@@ -62,19 +129,27 @@ function BillsList() {
       const params = {
         page: currentPage,
         pageSize: 10,
-        status: selectedStatus.map((s) => s.id).join(","),
-        search: searchQuery,
+        // API Postman yêu cầu UPPERCASE (VD: COMPLETED)
+        status:
+          selectedStatus.length > 0
+            ? selectedStatus.map((s) => s.id.toUpperCase()).join(",")
+            : undefined,
+        search: searchQuery.trim() || undefined,
       };
 
       const response = await getBills(params);
+
       if (response.success) {
         setBills(response.data);
-        setMeta(response.meta);
+        // Cập nhật tổng số trang từ meta của API
+        setTotalPages(response.meta.totalPages);
       }
     } catch (error) {
-      // Xử lý lỗi nếu cần (đã có console.error ở service)
+      toast.error("Không thể tải danh sách hóa đơn");
     } finally {
-      setLoading(false);
+      setTimeout(() => {
+        setLoading(false);
+      }, 100);
     }
   };
 
@@ -117,7 +192,9 @@ function BillsList() {
   };
 
   const getStatusStyle = (status: string) => {
-    switch (status) {
+    // Chuyển về lowercase để so sánh cho an toàn nếu API trả về mixed case
+    const s = status?.toLowerCase();
+    switch (s) {
       case "active":
       case "completed":
         return "text-success bg-success/10 px-2 py-1 rounded-full text-xs font-semibold uppercase tracking-wider";
@@ -127,6 +204,19 @@ function BillsList() {
         return "text-orange-500 bg-orange-500/10 px-2 py-1 rounded-full text-xs font-semibold uppercase tracking-wider";
       default:
         return "text-muted-foreground bg-muted px-2 py-1 rounded-full text-xs font-semibold uppercase tracking-wider";
+    }
+  };
+
+  const handleReturnBill = async (id: string) => {
+    try {
+      setLoading(true);
+      await returnBill(id);
+      toast.success("Đã hoàn trả hóa đơn thành công");
+      fetchBills(); // Load lại danh sách sau khi trả hàng thành công
+    } catch (error) {
+      toast.error("Có lỗi xảy ra khi hoàn trả hóa đơn");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -144,7 +234,10 @@ function BillsList() {
             type="search"
             placeholder="Tìm theo mã hóa đơn hoặc khách hàng"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1); // Reset về trang 1 khi tìm kiếm mới
+            }}
             className="focus-visible:ring-primary"
           />
         </div>
@@ -221,7 +314,9 @@ function BillsList() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {bills.map((bill: any) => {
+              {loading ? (
+                <TableSkeleton />
+              ) :(bills.map((bill: any) => {
                 const productIds =
                   bill.billProducts?.map((p: any) => p.id) || [];
                 const isBillSelected = selectedRows.includes(bill.id);
@@ -448,31 +543,63 @@ function BillsList() {
                             </div>
 
                             {/* ACTION BUTTONS */}
-                            {(bill.status === "active" || bill.status === "completed") && (
+                            {(bill.status === "active" ||
+                              bill.status === "completed") && (
                               <div className="flex justify-end items-center gap-3 mt-2">
-                                <Button
+                                {/* <Button
                                   variant="outline"
                                   size="sm"
                                   className="flex items-center gap-2 hover:bg-muted font-medium border-secondary text-seconborder-secondary"
                                 >
                                   <FileText className="w-4 h-4" />
                                   Chỉnh sửa thông tin
-                                </Button>
-                                <EditBill bill={bill} onSuccess={fetchBills}/>
-                                
+                                </Button> */}
+                                <EditBill bill={bill} onSuccess={fetchBills} />
 
                                 <ExchangeBill
                                   originalBill={bill}
                                   onSuccess={fetchBills}
                                 />
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="flex items-center gap-2 text-destructive border-destructive/20 hover:bg-destructive hover:text-destructive-foreground transition-all font-medium"
-                                >
-                                  <Undo2 className="w-4 h-4" />
-                                  Trả toàn bộ hàng
-                                </Button>
+
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="flex items-center gap-2 text-destructive border-destructive/20 hover:bg-destructive hover:text-destructive-foreground transition-all font-medium"
+                                    >
+                                      <Undo2 className="w-4 h-4" />
+                                      Trả toàn bộ hàng
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>
+                                        Xác nhận trả hàng?
+                                      </AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Bạn có chắc chắn muốn hoàn trả toàn bộ
+                                        hàng cho hóa đơn{" "}
+                                        <span className="font-bold text-foreground">
+                                          {bill.id}
+                                        </span>
+                                        ? Thao tác này sẽ cập nhật trạng thái
+                                        hóa đơn và không thể hoàn tác.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Hủy</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() =>
+                                          handleReturnBill(bill.id)
+                                        }
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      >
+                                        Xác nhận trả hàng
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
                               </div>
                             )}
                           </div>
@@ -481,7 +608,7 @@ function BillsList() {
                     )}
                   </React.Fragment>
                 );
-              })}
+              }))}
             </TableBody>
           </Table>
         </div>
@@ -493,25 +620,37 @@ function BillsList() {
               <PaginationItem>
                 <PaginationPrevious
                   href="#"
-                  className="hover:bg-muted text-foreground"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (currentPage > 1) setCurrentPage(currentPage - 1);
+                  }}
                 />
               </PaginationItem>
-              <PaginationItem>
-                <PaginationLink
-                  href="#"
-                  isActive
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
-                >
-                  1
-                </PaginationLink>
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationEllipsis className="text-muted-foreground" />
-              </PaginationItem>
+
+              {/* Render số trang động */}
+              {[...Array(totalPages)].map((_, index) => (
+                <PaginationItem key={index}>
+                  <PaginationLink
+                    href="#"
+                    isActive={currentPage === index + 1}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setCurrentPage(index + 1);
+                    }}
+                  >
+                    {index + 1}
+                  </PaginationLink>
+                </PaginationItem>
+              ))}
+
               <PaginationItem>
                 <PaginationNext
                   href="#"
-                  className="hover:bg-muted text-foreground"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (currentPage < totalPages)
+                      setCurrentPage(currentPage + 1);
+                  }}
                 />
               </PaginationItem>
             </PaginationContent>
