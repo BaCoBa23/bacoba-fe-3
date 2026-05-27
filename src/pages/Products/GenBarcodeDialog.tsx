@@ -1,4 +1,4 @@
-import  { useMemo, useRef } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -7,37 +7,80 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Barcode as BarcodeIcon,
   Printer,
   Settings2,
   AlertTriangle,
+  Plus,
+  Minus,
 } from "lucide-react";
-import Barcode from "react-barcode";
+import jsBarcode from "jsbarcode";
 import { useReactToPrint } from "react-to-print";
-import type { ReceivedNote } from "@/types";
 
-interface BarcodeDialogProps {
-  note: ReceivedNote;
+interface GenBarcodeDialogProps {
+  selectedProducts: any[];
 }
 
-export function BarcodeDialog({ note }: BarcodeDialogProps) {
-  // Ref để tham chiếu đến vùng in
+// Component bổ trợ để render barcode bằng thư viện JsBarcode
+function BarcodeGenerator({ value }: { value: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (canvasRef.current) {
+      try {
+        jsBarcode(canvasRef.current, value, {
+          format: "CODE128",
+          width: 1.1,          // Độ rộng vạch tương ứng cấu hình cũ
+          height: 32,          // Chiều cao vạch tương ứng cấu hình cũ
+          displayValue: false, // Không hiển thị text bên dưới vạch mẫu
+          margin: 0,
+          background: "transparent",
+        });
+      } catch (error) {
+        console.error("JsBarcode error:", error);
+      }
+    }
+  }, [value]);
+
+  return <canvas ref={canvasRef} />;
+}
+
+export function GenBarcodeDialog({ selectedProducts }: GenBarcodeDialogProps) {
   const contentRef = useRef<HTMLDivElement>(null);
+  const [labelConfigs, setLabelConfigs] = useState<any[]>([]);
 
-  // Logic tạo danh sách tem phẳng
-  const allLabels = useMemo(() => {
-    return (
-      note.receivedProducts?.flatMap((product: any) => {
-        return Array.from({ length: product.addQuantity }).map((_, index) => ({
-          ...product,
-          uniqueKey: `${product.productId}-${index}`,
-        }));
-      }) || []
+  useEffect(() => {
+    const initialConfigs = selectedProducts.map((p) => ({
+      ...p,
+      printQuantity: 1,
+    }));
+    setLabelConfigs(initialConfigs);
+  }, [selectedProducts]);
+
+  const updateQuantity = (id: string, delta: number) => {
+    setLabelConfigs((prev) =>
+      prev.map((item) => {
+        if (item.id === id) {
+          const newQty = Math.max(0, item.printQuantity + delta);
+          return { ...item, printQuantity: newQty };
+        }
+        return item;
+      })
     );
-  }, [note.receivedProducts]);
+  };
 
-  // Nhóm tem thành từng cặp (2 tem mỗi hàng 72mm)
+  const allLabels = useMemo(() => {
+    return labelConfigs.flatMap((product) => {
+      return Array.from({ length: product.printQuantity }).map((_, index) => ({
+        ...product,
+        uniqueKey: `${product.id}-${index}`,
+      }));
+    });
+  }, [labelConfigs]);
+
   const labelGroups = useMemo(() => {
     const groups = [];
     for (let i = 0; i < allLabels.length; i += 2) {
@@ -46,10 +89,9 @@ export function BarcodeDialog({ note }: BarcodeDialogProps) {
     return groups;
   }, [allLabels]);
 
-  // Hook xử lý in từ thư viện react-to-print
   const handlePrint = useReactToPrint({
     contentRef,
-    documentTitle: `MaVach_${note.id}`,
+    documentTitle: `InMaVach_HangHoa`,
   });
 
   return (
@@ -57,24 +99,80 @@ export function BarcodeDialog({ note }: BarcodeDialogProps) {
       <DialogTrigger asChild>
         <Button
           variant="outline"
-          size="sm"
+          size="default"
           className="gap-2 border-primary text-primary hover:bg-primary/10"
-          disabled={note.status !== "confirm"}
+          disabled={selectedProducts.length === 0}
         >
-          <BarcodeIcon className="w-4 h-4" /> In mã vạch
+          <BarcodeIcon className="w-4 h-4" /> In mã vạch ({selectedProducts.length})
         </Button>
       </DialogTrigger>
 
       <DialogContent className="min-w-[95vw] max-w-[98vw] h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
-        {/* Header */}
         <DialogHeader className="p-4 border-b flex flex-row items-center justify-between bg-muted/30">
           <DialogTitle className="flex items-center gap-2">
-            <Settings2 className="w-5 h-5 text-primary" /> Cấu hình tem in (Khổ 72x22mm)
+            <Settings2 className="w-5 h-5 text-primary" /> Cấu hình tem in (Khổ 70x20mm)
           </DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-1 overflow-hidden">
-          {/* LEFT: Preview - Đồng bộ UI với GenBarcodeDialog */}
+          {/* CỘT TRÁI: Chỉnh số lượng */}
+          <div className="w-[380px] border-r flex flex-col bg-background">
+            <div className="p-4 bg-muted/20 border-b flex justify-between items-center">
+              <span className="text-sm font-bold">Sản phẩm đã chọn</span>
+              <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
+                {labelConfigs.length} loại
+              </span>
+            </div>
+            <div className="flex-1 min-h-0">
+              <ScrollArea className="h-full w-full">
+                <div className="p-4 space-y-3">
+                  {labelConfigs.map((item) => (
+                    <div
+                      key={item.id}
+                      className="p-3 border border-border rounded-lg bg-card hover:border-primary/50 transition-colors"
+                    >
+                      <p className="text-[11px] font-bold uppercase leading-tight mb-2 line-clamp-2">
+                        {item.name}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-mono text-muted-foreground">
+                          {item.id}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => updateQuantity(item.id, -1)}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <Input
+                            className="h-6 w-10 text-center text-xs p-0 focus-visible:ring-primary border-muted"
+                            value={item.printQuantity}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value) || 0;
+                              updateQuantity(item.id, val - item.printQuantity);
+                            }}
+                          />
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => updateQuantity(item.id, 1)}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          </div>
+
+          {/* GIỮA: Preview */}
           <div className="flex-1 bg-secondary/10 p-10 overflow-y-auto flex justify-center custom-scrollbar">
             <div
               ref={contentRef}
@@ -85,27 +183,19 @@ export function BarcodeDialog({ note }: BarcodeDialogProps) {
                 <div key={gIndex} className="print-page-row">
                   {group.map((item: any) => (
                     <div key={item.uniqueKey} className="barcode-item">
-                      <div className="product-name">{item.productName}</div>
+                      <div className="product-name">{item.name}</div>
                       <div className="barcode-wrapper">
-                        <Barcode
-                          value={item.productId}
-                          width={1.1}
-                          height={32}
-                          displayValue={false}
-                          margin={0}
-                          renderer="canvas"
-                          background="transparent"
-                        />
+                        {/* Thay thế react-barcode bằng Component JsBarcode */}
+                        <BarcodeGenerator value={item.id} />
                       </div>
                       <div className="footer-info">
-                        <span className="sku">{item.productId}</span>
+                        <span className="sku">{item.id}</span>
                         <span className="price">
-                          {Number(item.total / item.addQuantity || 0).toLocaleString()}đ
+                          {Number(item.salePrice || 0).toLocaleString()}đ
                         </span>
                       </div>
                     </div>
                   ))}
-                  {/* Fill ô trống nếu hàng chỉ có 1 tem */}
                   {group.length === 1 && (
                     <div className="barcode-item invisible" />
                   )}
@@ -114,7 +204,7 @@ export function BarcodeDialog({ note }: BarcodeDialogProps) {
             </div>
           </div>
 
-          {/* RIGHT: Sidebar */}
+          {/* CỘT PHẢI */}
           <div className="w-[300px] border-l bg-background p-6 flex flex-col justify-between">
             <div className="space-y-6">
               <div className="space-y-2">
@@ -143,7 +233,7 @@ export function BarcodeDialog({ note }: BarcodeDialogProps) {
                 <ul className="text-[11px] text-muted-foreground list-decimal pl-4 space-y-1">
                   <li>Margins (Lề): <b>None</b></li>
                   <li>Scale (Tỷ lệ): <b>100%</b></li>
-                  <li>Khổ giấy: <b>72mm x 22mm</b></li>
+                  <li>Khổ giấy: <b>70mm x 20mm</b></li>
                 </ul>
               </div>
             </div>
@@ -159,7 +249,6 @@ export function BarcodeDialog({ note }: BarcodeDialogProps) {
           </div>
         </div>
 
-        {/* Tối ưu hóa CSS Print - Đồng bộ tuyệt đối */}
         <style
           dangerouslySetInnerHTML={{
             __html: `
@@ -172,8 +261,8 @@ export function BarcodeDialog({ note }: BarcodeDialogProps) {
 
             .print-page-row {
               display: flex;
-              width: 72mm;
-              height: 22mm;
+              width: 70mm; /* Đã đổi từ 72mm thành 70mm */
+              height: 20mm; /* Đã đổi từ 22mm thành 20mm */
               gap: 2mm;
               border-bottom: 1px dashed hsl(var(--border));
               background: white;
@@ -184,8 +273,8 @@ export function BarcodeDialog({ note }: BarcodeDialogProps) {
             }
 
             .barcode-item {
-              width: 34mm; 
-              height: 21mm;
+              width: 33mm; /* Co lại 1 chút để vừa tổng hàng 70mm (33mm * 2 + 2mm gap = 68mm, dư biên an toàn) */
+              height: 19mm; /* Co lại 1 chút cho vừa khít box 20mm */
               display: flex;
               flex-direction: column;
               justify-content: space-between;
@@ -220,7 +309,7 @@ export function BarcodeDialog({ note }: BarcodeDialogProps) {
 
             .barcode-wrapper canvas {
               max-width: 100%;
-              height: 10mm !important;
+              height: 9mm !important; /* Điều chỉnh nhẹ lại chiều cao canvas thực tế cho vừa khổ 20mm */
             }
 
             .footer-info { 
@@ -238,7 +327,7 @@ export function BarcodeDialog({ note }: BarcodeDialogProps) {
 
             @media print {
               @page {
-                size: 72mm 22mm;
+                size: 70mm 20mm; /* Cập nhật kích thước in chuẩn cho Driver máy in */
                 margin: 0 !important;
               }
               body { margin: 0 !important; }

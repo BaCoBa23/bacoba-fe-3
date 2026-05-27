@@ -77,10 +77,33 @@ export interface ProductsApiResponse {
     totalPages: number;
   };
 }
+export interface SearchedProductsApiResponse {
+  success: boolean;
+  message: string;
+  data: Product[];
+  meta?: {
+    totalItems: number;
+    currentPage: number;
+    pageSize: number;
+    totalPages: number;
+  };
+}
 
 export const getProducts = async (params?: GetProductsParams) => {
   try {
     const response = await apiClient.get<ProductsApiResponse>("/products", {
+      params
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    throw error;
+  }
+};
+
+export const getSearchedProducts = async (params?: GetProductsParams) => {
+  try {
+    const response = await apiClient.get<SearchedProductsApiResponse>("/products/search-list", {
       params
     });
     return response.data;
@@ -97,6 +120,7 @@ export interface ProductAttribute {
 }
 
 export interface CreateProductParams {
+  prefix?: string;
   name: string;
   productTypeId: string;
   brandId: string;
@@ -145,23 +169,27 @@ export const editProduct = async (id: string, params: Partial<EditProductParams>
 };
 
 export interface RenameProductParams {
-  name: string;
+  name?: string;
+  productTypeId?: number;
+  initialPrice?: number;
+  salePrice?: number;
 }
 
 /**
- * Đổi tên sản phẩm
+ * Cập nhật thông tin cốt lõi của sản phẩm và đồng bộ các biến thể con
  * @param id ID của sản phẩm (ví dụ: AKG000005)
- * @param name Tên mới của sản phẩm
+ * @param params Object chứa các thông tin cần thay đổi (name, productTypeId, initialPrice, salePrice)
  */
-export const renameProduct = async (id: string, name: string) => {
+export const renameProduct = async (id: string, params: RenameProductParams) => {
   try {
+    // Gửi toàn bộ params lên body, back-end sẽ tự lọc trường nào có dữ liệu để update
     const response = await apiClient.put<ProductsApiResponse>(
       `/products/${id}/rename`,
-      { name } // Body gửi lên theo dạng { "name": "..." }
+      params 
     );
     return response.data;
   } catch (error) {
-    console.error(`Error renaming product with ID ${id}:`, error);
+    console.error(`Error updating product with ID ${id}:`, error);
     throw error;
   }
 };
