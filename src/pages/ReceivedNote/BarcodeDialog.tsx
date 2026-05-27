@@ -89,18 +89,22 @@ export function BarcodeDialog({ note }: BarcodeDialogProps) {
                       <div className="barcode-wrapper">
                         <Barcode
                           value={item.productId}
-                          width={1.1}
-                          height={32}
+                          width={2}
+                          height={40}
                           displayValue={false}
                           margin={0}
-                          renderer="canvas"
-                          background="transparent"
+                          renderer="svg"
+                          background="#ffffff"
+                          lineColor="#000000"
                         />
                       </div>
                       <div className="footer-info">
                         <span className="sku">{item.productId}</span>
                         <span className="price">
-                          {Number(item.total / item.addQuantity || 0).toLocaleString()}đ
+                          {(item.addQuantity > 0
+                            ? Math.round(item.total / item.addQuantity)
+                            : 0
+                          ).toLocaleString()}đ
                         </span>
                       </div>
                     </div>
@@ -218,9 +222,10 @@ export function BarcodeDialog({ note }: BarcodeDialogProps) {
               margin: -1px 0;
             }
 
-            .barcode-wrapper canvas {
-              max-width: 100%;
-              height: 10mm !important;
+            .barcode-wrapper svg {
+              width: 100%;
+              height: 10mm;
+              shape-rendering: crispEdges;
             }
 
             .footer-info { 
@@ -242,6 +247,14 @@ export function BarcodeDialog({ note }: BarcodeDialogProps) {
                 margin: 0 !important;
               }
               body { margin: 0 !important; }
+              .barcode-container-print,
+              .barcode-item,
+              .barcode-wrapper,
+              .barcode-wrapper svg {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+              }
               .barcode-container-print {
                 padding: 0 !important;
                 box-shadow: none !important;

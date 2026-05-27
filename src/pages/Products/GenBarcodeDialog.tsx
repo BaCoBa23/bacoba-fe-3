@@ -24,20 +24,21 @@ interface GenBarcodeDialogProps {
   selectedProducts: any[];
 }
 
-// Component bổ trợ để render barcode bằng thư viện JsBarcode
+// Render barcode bằng SVG (vector) để in nét, không bị mờ khi scale
 function BarcodeGenerator({ value }: { value: string }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
-    if (canvasRef.current) {
+    if (svgRef.current) {
       try {
-        jsBarcode(canvasRef.current, value, {
+        jsBarcode(svgRef.current, value, {
           format: "CODE128",
-          width: 1.1,          // Độ rộng vạch tương ứng cấu hình cũ
-          height: 32,          // Chiều cao vạch tương ứng cấu hình cũ
-          displayValue: false, // Không hiển thị text bên dưới vạch mẫu
+          width: 2,
+          height: 40,
+          displayValue: false,
           margin: 0,
-          background: "transparent",
+          background: "#ffffff",
+          lineColor: "#000000",
         });
       } catch (error) {
         console.error("JsBarcode error:", error);
@@ -45,31 +46,30 @@ function BarcodeGenerator({ value }: { value: string }) {
     }
   }, [value]);
 
-  return <canvas ref={canvasRef} />;
+  return <svg ref={svgRef} />;
 }
+
+const MAX_PRINT_QTY = 500;
 
 export function GenBarcodeDialog({ selectedProducts }: GenBarcodeDialogProps) {
   const contentRef = useRef<HTMLDivElement>(null);
-  const [labelConfigs, setLabelConfigs] = useState<any[]>([]);
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
 
-  useEffect(() => {
-    const initialConfigs = selectedProducts.map((p) => ({
-      ...p,
-      printQuantity: 1,
-    }));
-    setLabelConfigs(initialConfigs);
-  }, [selectedProducts]);
+  const labelConfigs = useMemo(
+    () =>
+      selectedProducts.map((p) => ({
+        ...p,
+        printQuantity: quantities[p.id] ?? 1,
+      })),
+    [selectedProducts, quantities]
+  );
 
   const updateQuantity = (id: string, delta: number) => {
-    setLabelConfigs((prev) =>
-      prev.map((item) => {
-        if (item.id === id) {
-          const newQty = Math.max(0, item.printQuantity + delta);
-          return { ...item, printQuantity: newQty };
-        }
-        return item;
-      })
-    );
+    setQuantities((prev) => {
+      const current = prev[id] ?? 1;
+      const next = Math.min(MAX_PRINT_QTY, Math.max(0, current + delta));
+      return { ...prev, [id]: next };
+    });
   };
 
   const allLabels = useMemo(() => {
@@ -151,7 +151,10 @@ export function GenBarcodeDialog({ selectedProducts }: GenBarcodeDialogProps) {
                             className="h-6 w-10 text-center text-xs p-0 focus-visible:ring-primary border-muted"
                             value={item.printQuantity}
                             onChange={(e) => {
-                              const val = parseInt(e.target.value) || 0;
+                              const raw = parseInt(e.target.value, 10);
+                              const val = Number.isFinite(raw)
+                                ? Math.min(MAX_PRINT_QTY, Math.max(0, raw))
+                                : 0;
                               updateQuantity(item.id, val - item.printQuantity);
                             }}
                           />
@@ -307,9 +310,10 @@ export function GenBarcodeDialog({ selectedProducts }: GenBarcodeDialogProps) {
               margin: -1px 0;
             }
 
-            .barcode-wrapper canvas {
-              max-width: 100%;
-              height: 9mm !important; /* Điều chỉnh nhẹ lại chiều cao canvas thực tế cho vừa khổ 20mm */
+            .barcode-wrapper svg {
+              width: 100%;
+              height: 9mm;
+              shape-rendering: crispEdges;
             }
 
             .footer-info { 
@@ -327,10 +331,18 @@ export function GenBarcodeDialog({ selectedProducts }: GenBarcodeDialogProps) {
 
             @media print {
               @page {
-                size: 70mm 20mm; /* Cập nhật kích thước in chuẩn cho Driver máy in */
+                size: 70mm 20mm;
                 margin: 0 !important;
               }
               body { margin: 0 !important; }
+              .barcode-container-print,
+              .barcode-item,
+              .barcode-wrapper,
+              .barcode-wrapper svg {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+              }
               .barcode-container-print {
                 padding: 0 !important;
                 box-shadow: none !important;
